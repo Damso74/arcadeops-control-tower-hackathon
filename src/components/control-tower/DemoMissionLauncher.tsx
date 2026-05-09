@@ -23,7 +23,6 @@ import { ToolCallCard, type ToolCallView } from "./ToolCallCard";
 
 interface DemoMissionLauncherProps {
   liveAvailable: boolean;
-  liveDisabledReason?: string;
 }
 
 type RunStatus = "idle" | "running" | "completed" | "error";
@@ -52,7 +51,6 @@ const INITIAL_STATE: RunState = {
 
 export function DemoMissionLauncher({
   liveAvailable,
-  liveDisabledReason,
 }: DemoMissionLauncherProps) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>(
     DEMO_MISSIONS.find((m) => m.default)?.id ?? DEMO_MISSIONS[0].id,
@@ -128,8 +126,10 @@ export function DemoMissionLauncher({
       <section className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center gap-3">
           <ModeBadge mode={state.mode} available={state.mode === "live" ? liveAvailable : true} />
-          {state.mode === "live" && !liveAvailable && liveDisabledReason ? (
-            <span className="text-xs text-zinc-500">{liveDisabledReason}</span>
+          {!liveAvailable ? (
+            <span className="text-xs text-zinc-500">
+              Deterministic replay for reliable judging.
+            </span>
           ) : null}
         </div>
 
@@ -172,15 +172,19 @@ export function DemoMissionLauncher({
           >
             ▶ Replay demo mission
           </button>
-          <button
-            type="button"
-            onClick={() => startRun("live")}
-            disabled={liveDisabled}
-            title={!liveAvailable ? liveDisabledReason : undefined}
-            className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-zinc-100 transition-colors hover:border-white/30 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            ⚡ Run live with ArcadeOps backend
-          </button>
+          {liveAvailable ? (
+            <button
+              type="button"
+              onClick={() => startRun("live")}
+              disabled={liveDisabled}
+              className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-zinc-100 transition-colors hover:border-white/30 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ⚡ Run live with ArcadeOps backend
+              <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-200">
+                Dev mode
+              </span>
+            </button>
+          ) : null}
           {state.status !== "idle" && !isRunning ? (
             <button
               type="button"

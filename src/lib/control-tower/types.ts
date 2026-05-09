@@ -158,5 +158,4 @@ export type ControlTowerMode = "replay" | "live";
 export interface ControlTowerModeAvailability {
   replay: boolean;
   live: boolean;
-  liveDisabledReason?: string;
 }

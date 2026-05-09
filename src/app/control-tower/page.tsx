@@ -15,17 +15,19 @@ function detectModeAvailability(): ControlTowerModeAvailability {
   const token = process.env.ARCADEOPS_DEMO_TOKEN;
   const agentId = process.env.ARCADEOPS_DEMO_AGENT_ID;
   const live = Boolean(baseUrl && token && agentId);
-  return {
-    replay: true,
-    live,
-    liveDisabledReason: live
-      ? undefined
-      : "Live backend not configured in this deployment.",
-  };
+  return { replay: true, live };
 }
 
 export default function ControlTowerPage() {
   const availability = detectModeAvailability();
+
+  const heroDescription = availability.live
+    ? "From mission to audit trail in 90 seconds. Replay the deterministic demo run for reliable judging, or run a live mission against a sandboxed ArcadeOps backend with streamed phases, tool calls, observability metrics and a production-readiness report."
+    : "From mission to audit trail in 90 seconds. A deterministic replay of an autonomous AI agent workflow — streamed phases, tool calls, observability metrics and a production-readiness report.";
+
+  const footerNote = availability.live
+    ? "Replay mode is deterministic and runs without any API key. Live mode proxies a sandboxed ArcadeOps demo endpoint — the bearer token never reaches your browser. Built for AI Agent Olympics · Lablab.ai · Milan AI Week 2026."
+    : "Deterministic replay mode runs without any API key — replays produce identical traces, useful for video and audit reproducibility. Built for AI Agent Olympics · Lablab.ai · Milan AI Week 2026.";
 
   return (
     <div className="min-h-dvh bg-zinc-950 text-zinc-100">
@@ -41,28 +43,15 @@ export default function ControlTowerPage() {
           <p className="text-lg text-zinc-300">
             Mission control for autonomous AI agents.
           </p>
-          <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
-            From mission to audit trail in 90 seconds. Replay the deterministic
-            demo run for reliable judging, or connect to a live ArcadeOps
-            backend to see a real autonomous run with streamed phases, tool
-            calls, observability metrics and a production-readiness report.
-          </p>
+          <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">{heroDescription}</p>
         </header>
 
         {/* Launcher */}
-        <DemoMissionLauncher
-          liveAvailable={availability.live}
-          liveDisabledReason={availability.liveDisabledReason}
-        />
+        <DemoMissionLauncher liveAvailable={availability.live} />
 
         {/* Footer note */}
         <footer className="border-t border-white/10 pt-6 text-xs text-zinc-500">
-          <p>
-            Replay mode is deterministic and runs without any API key. Live
-            mode proxies a sandboxed ArcadeOps demo endpoint — the bearer
-            token never reaches your browser. Built for AI Agent Olympics ·
-            Lablab.ai · Milan AI Week 2026.
-          </p>
+          <p>{footerNote}</p>
         </footer>
       </div>
     </div>

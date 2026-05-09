@@ -16,7 +16,7 @@ export function ModeBadge({ mode, available }: ModeBadgeProps) {
     ? available
       ? "Live ArcadeOps backend"
       : "Live backend not configured"
-    : "Replay demo (deterministic)";
+    : "Replay demo";
 
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-wide text-zinc-300 backdrop-blur">
