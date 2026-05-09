@@ -1,5 +1,6 @@
 "use client";
 
+import { ClipboardPaste } from "lucide-react";
 import { useId, useMemo } from "react";
 
 interface PastedTraceInputProps {
@@ -16,11 +17,10 @@ const PLACEHOLDER = `Paste logs, JSON traces, tool calls, LangGraph/CrewAI outpu
 Gemini will judge whether this run is production-ready.`;
 
 /**
- * Free-form trace input. Strict client-side discipline:
- *   - we never store the trace anywhere (no localStorage, no console),
- *   - we hard-cap on input so a runaway paste never fires the API,
- *   - we surface a "load unsafe example" button so judges can see the
- *     happy path without typing anything.
+ * Free-form trace input — V5 polished:
+ *   - clearer header with paste icon,
+ *   - explicit "trace too long" copy,
+ *   - reassuring sub-text reminding the user the trace is not stored.
  */
 export function PastedTraceInput({
   value,
@@ -46,15 +46,14 @@ export function PastedTraceInput({
       <header className="flex flex-col gap-1">
         <label
           htmlFor={textareaId}
-          className="text-sm font-semibold text-zinc-100"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-100"
         >
+          <ClipboardPaste className="h-4 w-4 text-violet-300" aria-hidden />
           Paste an AI agent trace
         </label>
         <p id={helpId} className="text-xs leading-relaxed text-zinc-400">
-          Logs, JSON traces, tool calls, LangGraph / CrewAI outputs, MCP tool
-          logs, browser-agent steps or an incident report. The server redacts
-          emails, URLs, secrets and IDs before reaching Gemini. Nothing is
-          stored.
+          Your trace is sent to the server-side Gemini judge for this request
+          only. It is not stored by this demo.
         </p>
       </header>
 
@@ -71,7 +70,7 @@ export function PastedTraceInput({
         placeholder={PLACEHOLDER}
         spellCheck={false}
         rows={10}
-        className="min-h-[220px] w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] p-4 font-mono text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-500 focus:border-violet-400/50 focus:outline-none focus:ring-2 focus:ring-violet-400/40"
+        className="min-h-[220px] w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] p-4 font-mono text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-500 focus:border-violet-400/60 focus:outline-none focus:ring-2 focus:ring-violet-400/40"
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -80,7 +79,7 @@ export function PastedTraceInput({
             <button
               type="button"
               onClick={onLoadExample}
-              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 font-medium text-zinc-200 hover:border-white/20 hover:bg-white/10"
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 font-medium text-zinc-200 transition-colors hover:border-white/20 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
             >
               Load unsafe example
             </button>
@@ -89,24 +88,24 @@ export function PastedTraceInput({
             <button
               type="button"
               onClick={onClear}
-              className="text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline"
+              className="text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
             >
               Clear
             </button>
           ) : null}
         </div>
 
-        <div className={`text-[11px] ${counterTone}`}>
-          {value.length.toLocaleString()} / {maxChars.toLocaleString()} chars
-          {tooShort ? " · need at least 20" : ""}
+        <div className={`text-[11px] tabular-nums ${counterTone}`}>
+          {value.length.toLocaleString()} / {maxChars.toLocaleString()}
+          {tooShort ? " · need at least 20 chars" : ""}
           {overLimit ? " · over limit" : ""}
         </div>
       </div>
 
       {overLimit ? (
         <p className="rounded-md border border-red-400/30 bg-red-400/5 px-3 py-2 text-xs text-red-200">
-          Trace too long. Trim it below {maxChars.toLocaleString()} characters
-          before judging.
+          Trace is too long for this public demo. Keep it under{" "}
+          {maxChars.toLocaleString()} characters before judging.
         </p>
       ) : null}
     </section>

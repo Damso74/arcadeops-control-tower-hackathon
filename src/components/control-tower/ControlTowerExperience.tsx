@@ -36,7 +36,7 @@ interface ControlTowerExperienceProps {
  * Top-level state machine for the production-gate flow.
  *
  * Three input modes feed a single Gemini judge call:
- *   - "scenario" — pre-canned trace (recommended for the wow effect)
+ *   - "scenario" — pre-canned trace (the wow path)
  *   - "replay"   — original V0–V3 deterministic SSE replay
  *   - "pasted"   — user pasted their own trace
  *
@@ -166,8 +166,24 @@ export function ControlTowerExperience({
     setJudgeAfter(null);
   }, []);
 
+  const guardrailsForActiveSource = useMemo<readonly string[]>(() => {
+    if (selection.mode === "scenario" && activeScenario) {
+      return activeScenario.recommendedGuardrails;
+    }
+    // For pasted / replay traces we cannot know which guardrails are
+    // "recommended" without re-asking Gemini — fall back to the highest-
+    // value 5 from the catalogue.
+    return [
+      "Require human approval for destructive tools",
+      "Block outbound messages without review",
+      "Set per-tool cost limits",
+      "Persist replay IDs for every run",
+      "Record audit logs for write actions",
+    ];
+  }, [selection.mode, activeScenario]);
+
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       <TraceScenarioPicker
         scenarios={TRACE_SCENARIOS}
         selection={selection}
@@ -176,24 +192,12 @@ export function ControlTowerExperience({
 
       {/* Mode-specific input panel */}
       {selection.mode === "scenario" && activeScenario ? (
-        <section className="flex flex-col gap-6">
-          <header className="flex flex-col gap-1">
-            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-              2 · Inspect the evidence
-            </h2>
-            <p className="text-sm text-zinc-300">
-              {activeScenario.shortDescription}
-            </p>
-          </header>
-
+        <section className="flex flex-col gap-5">
           <ScenarioEvidenceTimeline scenario={activeScenario} />
-
-          <div className="flex flex-col gap-3">
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-              Observability
-            </h3>
-            <ObservabilityPanel observability={activeScenario.snapshot.observability} />
-          </div>
+          <ObservabilityPanel
+            observability={activeScenario.snapshot.observability}
+            compact
+          />
         </section>
       ) : null}
 
@@ -203,10 +207,6 @@ export function ControlTowerExperience({
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               2 · Paste your trace
             </h2>
-            <p className="text-sm text-zinc-300">
-              Drop in any agent run trace. Server-side sanitization redacts
-              emails, URLs, secrets and IDs before reaching Gemini.
-            </p>
           </header>
 
           <PastedTraceInput
@@ -229,9 +229,9 @@ export function ControlTowerExperience({
               2 · Replay the safe sample
             </h2>
             <p className="text-sm text-zinc-300">
-              Deterministic SSE replay of the bundled trace. Click below to
-              stream phases, tool calls and observability metrics — then let
-              Gemini judge the run.
+              Deterministic SSE replay of the bundled trace. Stream phases,
+              tool calls and observability metrics — then let Gemini judge
+              the run.
             </p>
           </header>
 
@@ -245,7 +245,7 @@ export function ControlTowerExperience({
       {/* Reliability judge */}
       <section className="flex flex-col gap-3">
         <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          3 · Let Gemini judge production readiness
+          3 · Gemini decides: ship, review or block
         </h2>
         <GeminiJudgePanel
           key={judgeKey}
@@ -258,9 +258,9 @@ export function ControlTowerExperience({
 
       {/* Guardrails + re-score (only shown after the first verdict) */}
       {judgeBefore ? (
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-4">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            4 · Simulate guardrails and re-score
+            4 · Add guardrails &amp; re-score
           </h2>
           <ReadinessComparison before={judgeBefore} after={judgeAfter} />
           <GuardrailsPanel
@@ -274,6 +274,7 @@ export function ControlTowerExperience({
               replayMissionPrompt,
               pastedTrace,
             )}
+            recommendedGuardrails={guardrailsForActiveSource}
             initialSelectedGuardrails={
               activeScenario?.defaultSelectedGuardrails ?? []
             }
@@ -289,7 +290,7 @@ export function ControlTowerExperience({
 function actionLabelFor(mode: ScenarioPickerSelection["mode"]): string {
   switch (mode) {
     case "scenario":
-      return "Audit this run";
+      return "Run Gemini judge";
     case "pasted":
       return "Judge pasted trace";
     case "replay":

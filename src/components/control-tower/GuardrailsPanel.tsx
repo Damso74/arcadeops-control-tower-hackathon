@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { ShieldCheck, Sparkles, Wrench } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type {
   GeminiJudgeResult,
@@ -8,6 +9,7 @@ import type {
 } from "@/lib/control-tower/gemini-types";
 import { GUARDRAIL_CATALOG } from "@/lib/control-tower/scenarios";
 
+import { Disclosure } from "./Disclosure";
 import { JudgeResultView } from "./GeminiJudgePanel";
 
 interface GuardrailsPanelProps {
@@ -18,8 +20,17 @@ interface GuardrailsPanelProps {
    */
   remediationSource:
     | { kind: "scenario"; scenarioId: string }
-    | { kind: "snapshot"; runSnapshot: NonNullable<JudgeRequestBody["runSnapshot"]>; mission?: string }
+    | {
+        kind: "snapshot";
+        runSnapshot: NonNullable<JudgeRequestBody["runSnapshot"]>;
+        mission?: string;
+      }
     | { kind: "pasted"; traceText: string };
+  /**
+   * Recommended guardrails surfaced front-and-centre — typically 4–5 for
+   * the wow scenario. Anything not listed here goes into "Advanced".
+   */
+  recommendedGuardrails: readonly string[];
   /** Default checkboxes pre-checked when the panel opens. */
   initialSelectedGuardrails: readonly string[];
   /** Result returned by the simulation, if any — controlled by the parent. */
@@ -34,18 +45,36 @@ type SimState =
   | { status: "error"; message: string }
   | { status: "ready" };
 
+const MAX_RECOMMENDED = 5;
+
 /**
- * "Recommended production guardrails" panel. The user toggles checkboxes
- * and clicks "Re-score with guardrails", which triggers a server-side
- * `remediation_simulation` call. The original judge result stays put;
- * this panel only owns the After-result.
+ * "Recommended production guardrails" panel — V5 simplified.
+ *
+ *   - Up to 5 recommended guardrails visible by default (icon + label).
+ *   - Everything else from the catalogue lives behind "Advanced
+ *     guardrails" disclosure.
+ *   - The CTA explicitly says "what-if simulation" — no "applied to
+ *     production" copy.
+ *   - The After-result is rendered with `collapseDetails` so the
+ *     comparison stays the wow moment.
  */
 export function GuardrailsPanel({
   remediationSource,
+  recommendedGuardrails,
   initialSelectedGuardrails,
   afterResult,
   onAfterResult,
 }: GuardrailsPanelProps) {
+  const recommended = useMemo(
+    () => recommendedGuardrails.slice(0, MAX_RECOMMENDED),
+    [recommendedGuardrails],
+  );
+  const advanced = useMemo(
+    () =>
+      GUARDRAIL_CATALOG.filter((label) => !recommended.includes(label)),
+    [recommended],
+  );
+
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(initialSelectedGuardrails),
   );
@@ -142,18 +171,26 @@ export function GuardrailsPanel({
       className="flex flex-col gap-5 rounded-xl border border-white/10 bg-white/[0.02] p-6"
     >
       <header className="flex flex-col gap-1">
-        <h3 id={headingId} className="text-lg font-semibold text-zinc-50">
-          Recommended production guardrails
-        </h3>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-emerald-300" aria-hidden />
+          <h3
+            id={headingId}
+            className="text-lg font-semibold text-zinc-50"
+          >
+            Recommended production guardrails
+          </h3>
+        </div>
         <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
-          Gemini surfaced risks in this run. Simulate how the readiness score
-          changes if these guardrails are implemented. This is a what-if
-          simulation — we are not modifying any real backend.
+          Pick the guardrails to simulate. We re-run Gemini on the same trace
+          as if these guardrails were already implemented.{" "}
+          <span className="text-zinc-300">
+            What-if simulation only. No backend is modified.
+          </span>
         </p>
       </header>
 
       <ul className="grid gap-2 sm:grid-cols-2">
-        {GUARDRAIL_CATALOG.map((label) => {
+        {recommended.map((label) => {
           const checked = selected.has(label);
           return (
             <li key={label}>
@@ -167,14 +204,37 @@ export function GuardrailsPanel({
         })}
       </ul>
 
+      {advanced.length > 0 ? (
+        <Disclosure label="Advanced guardrails" hint={`${advanced.length} more`}>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {advanced.map((label) => {
+              const checked = selected.has(label);
+              return (
+                <li key={label}>
+                  <GuardrailCheckbox
+                    label={label}
+                    checked={checked}
+                    onChange={(c) => toggle(label, c)}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </Disclosure>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={reScore}
           disabled={state.status === "loading" || selected.size === 0}
-          className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-500/40"
+          className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-colors hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 disabled:cursor-not-allowed disabled:bg-emerald-500/40"
         >
-          {state.status === "loading" ? <Spinner /> : null}
+          {state.status === "loading" ? (
+            <Spinner />
+          ) : (
+            <Sparkles className="h-4 w-4" aria-hidden />
+          )}
           {cta}
         </button>
         <span className="text-[11px] text-zinc-500">
@@ -197,11 +257,11 @@ export function GuardrailsPanel({
             <h4 className="text-sm font-semibold text-zinc-100">
               After guardrails (what-if simulation)
             </h4>
-            <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
+            <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
               Simulation
             </span>
           </div>
-          <JudgeResultView result={afterResult} />
+          <JudgeResultView result={afterResult} collapseDetails />
         </div>
       ) : null}
     </section>
@@ -220,7 +280,8 @@ function GuardrailCheckbox({
   return (
     <label
       className={[
-        "flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-sm transition-colors",
+        "group flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors",
+        "focus-within:ring-2 focus-within:ring-emerald-400/60",
         checked
           ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-50"
           : "border-white/10 bg-white/[0.03] text-zinc-200 hover:border-white/20",
@@ -230,9 +291,15 @@ function GuardrailCheckbox({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 flex-none accent-emerald-400"
+        className="mt-0.5 h-4 w-4 flex-none accent-emerald-400 focus:outline-none"
       />
-      <span>{label}</span>
+      <span className="flex items-start gap-2">
+        <Wrench
+          aria-hidden
+          className={`mt-0.5 h-3.5 w-3.5 flex-none ${checked ? "text-emerald-200" : "text-zinc-500 group-hover:text-zinc-300"}`}
+        />
+        <span className="leading-snug">{label}</span>
+      </span>
     </label>
   );
 }

@@ -1,5 +1,14 @@
 "use client";
 
+import {
+  AlertTriangle,
+  ArrowRight,
+  ClipboardPaste,
+  Gauge,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
+
 import type {
   ScenarioRiskLevel,
   TraceScenario,
@@ -21,17 +30,16 @@ interface TraceScenarioPickerProps {
 }
 
 /**
- * "Choose a run" picker — the entry point of the production-gate flow.
+ * "Choose a run" picker — V5 decision-first layout.
  *
- * Lays out one card per trace scenario plus two extra entry tiles:
- *   - "Replay safe sample" → keeps the original V0–V3 deterministic
- *     replay path (the bundled fixture). The judge still works on top
- *     of it — this is the comfort path for a quick 30-second demo.
- *   - "Paste your own trace" → feeds the pasted-trace input. Nothing
- *     gets stored: the text only travels with the next judge call.
+ *   - One large hero card for the critical-risk scenario (the wow path).
+ *   - Three compact cards: needs-review scenario, ready scenario, paste.
+ *   - One quiet text link for the deterministic replay (back-compat path
+ *     for video reproducibility, not the primary entry).
  *
- * The critical-risk scenario is visually emphasized (border + ring +
- * label tone) because catching unsafe runs is the differentiator.
+ * The judge will run on whatever the user picks. The visual hierarchy
+ * makes "Audit unsafe run" the obvious action a first-time judge will
+ * take.
  */
 export function TraceScenarioPicker({
   scenarios,
@@ -39,6 +47,9 @@ export function TraceScenarioPicker({
   onSelect,
   disabled,
 }: TraceScenarioPickerProps) {
+  const critical = scenarios.find((s) => s.riskLevel === "critical") ?? null;
+  const others = scenarios.filter((s) => s.riskLevel !== "critical");
+
   return (
     <section
       aria-label="Choose a run to audit"
@@ -46,46 +57,55 @@ export function TraceScenarioPicker({
     >
       <header className="flex flex-col gap-1">
         <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          1 · Choose a run
+          1 · Pick an agent run
         </h2>
         <p className="text-sm text-zinc-300">
-          Pick a recorded agent run, replay the safe sample, or paste your own
-          trace. Gemini will judge production readiness on the next click.
+          Catch unsafe AI agent runs before they ship. Pick the unsafe sample
+          to see the production gate in action.
         </p>
       </header>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {scenarios.map((scenario) => {
-          const isSelected =
-            selection.mode === "scenario" && selection.scenarioId === scenario.id;
-          return (
-            <ScenarioCard
-              key={scenario.id}
-              scenario={scenario}
-              selected={isSelected}
-              disabled={disabled}
-              onSelect={() =>
-                onSelect({ mode: "scenario", scenarioId: scenario.id })
-              }
-            />
-          );
-        })}
+      <div className="flex flex-col gap-3">
+        {critical ? (
+          <CriticalScenarioCard
+            scenario={critical}
+            selected={
+              selection.mode === "scenario" &&
+              selection.scenarioId === critical.id
+            }
+            disabled={disabled}
+            onSelect={() =>
+              onSelect({ mode: "scenario", scenarioId: critical.id })
+            }
+          />
+        ) : null}
 
-        <ExtraCard
-          title="Paste your own trace"
-          subtitle="Logs, JSON, MCP tool calls, framework outputs"
-          cta="Audit pasted trace"
-          tone="neutral"
-          selected={selection.mode === "pasted"}
-          disabled={disabled}
-          onSelect={() => onSelect({ mode: "pasted", scenarioId: null })}
-        />
+        <div className="grid gap-3 md:grid-cols-3">
+          {others.map((scenario) => {
+            const isSelected =
+              selection.mode === "scenario" &&
+              selection.scenarioId === scenario.id;
+            return (
+              <SecondaryScenarioCard
+                key={scenario.id}
+                scenario={scenario}
+                selected={isSelected}
+                disabled={disabled}
+                onSelect={() =>
+                  onSelect({ mode: "scenario", scenarioId: scenario.id })
+                }
+              />
+            );
+          })}
 
-        <ExtraCard
-          title="Replay safe sample"
-          subtitle="Deterministic SSE replay of the bundled trace (no key)"
-          cta="Replay safe sample"
-          tone="positive"
+          <PasteCard
+            selected={selection.mode === "pasted"}
+            disabled={disabled}
+            onSelect={() => onSelect({ mode: "pasted", scenarioId: null })}
+          />
+        </div>
+
+        <ReplayLink
           selected={selection.mode === "replay"}
           disabled={disabled}
           onSelect={() => onSelect({ mode: "replay", scenarioId: null })}
@@ -95,16 +115,20 @@ export function TraceScenarioPicker({
   );
 }
 
-interface ScenarioCardProps {
+interface CardProps {
   scenario: TraceScenario;
   selected: boolean;
   disabled?: boolean;
   onSelect: () => void;
 }
 
-function ScenarioCard({ scenario, selected, disabled, onSelect }: ScenarioCardProps) {
+function CriticalScenarioCard({
+  scenario,
+  selected,
+  disabled,
+  onSelect,
+}: CardProps) {
   const palette = riskPalette(scenario.riskLevel);
-  const isCritical = scenario.riskLevel === "critical";
   return (
     <button
       type="button"
@@ -112,76 +136,62 @@ function ScenarioCard({ scenario, selected, disabled, onSelect }: ScenarioCardPr
       disabled={disabled}
       aria-pressed={selected}
       className={[
-        "flex h-full flex-col gap-3 rounded-xl border p-4 text-left transition-colors",
+        "group relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-5 text-left transition-colors",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60",
         "disabled:cursor-not-allowed disabled:opacity-60",
         selected
           ? `${palette.borderSelected} ${palette.bgSelected}`
-          : `${palette.border} ${palette.bg} hover:border-white/30`,
-        isCritical ? "ring-1 ring-red-400/30" : "",
+          : `${palette.border} ${palette.bg} hover:border-red-400/60`,
+        "ring-1 ring-red-400/30 sm:p-6",
       ].join(" ")}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${palette.badge}`}
-        >
-          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-          {palette.riskLabel}
-        </span>
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500">
-          {expectedVerdictLabel(scenario.expectedVerdict)}
-        </span>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-red-500/10 blur-3xl"
+      />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${palette.badge}`}
+          >
+            <ShieldAlert className="h-3 w-3" aria-hidden />
+            {palette.riskLabel}
+          </span>
+          <span className="text-[10px] uppercase tracking-wider text-red-200/70">
+            Expected: blocked
+          </span>
+        </div>
       </div>
 
-      <h3 className="text-sm font-semibold text-zinc-50">{scenario.title}</h3>
-      <p className="text-xs leading-relaxed text-zinc-400">
-        {scenario.shortDescription}
-      </p>
+      <div className="flex flex-col gap-1.5">
+        <h3 className="text-xl font-semibold text-zinc-50 sm:text-2xl">
+          {scenario.title}
+        </h3>
+        <p className="max-w-2xl text-sm leading-relaxed text-zinc-300">
+          This agent tries to delete CRM records and email customers without
+          approval.
+        </p>
+      </div>
 
       <span
         aria-hidden
-        className={`mt-auto inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ${palette.cta}`}
+        className="mt-1 inline-flex w-fit items-center gap-2 rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-500/20 transition-colors group-hover:bg-red-400"
       >
-        {ctaLabel(scenario.riskLevel)}
-        <span>→</span>
+        Audit unsafe run
+        <ArrowRight className="h-4 w-4" aria-hidden />
       </span>
     </button>
   );
 }
 
-function ExtraCard({
-  title,
-  subtitle,
-  cta,
-  tone,
+function SecondaryScenarioCard({
+  scenario,
   selected,
   disabled,
   onSelect,
-}: {
-  title: string;
-  subtitle: string;
-  cta: string;
-  tone: "neutral" | "positive";
-  selected: boolean;
-  disabled?: boolean;
-  onSelect: () => void;
-}) {
-  const palette =
-    tone === "positive"
-      ? {
-          border: "border-emerald-400/20",
-          bg: "bg-emerald-400/[0.03]",
-          borderSelected: "border-emerald-400/60",
-          bgSelected: "bg-emerald-400/10",
-          cta: "bg-emerald-400/15 text-emerald-100",
-        }
-      : {
-          border: "border-white/10",
-          bg: "bg-white/[0.02]",
-          borderSelected: "border-violet-400/50",
-          bgSelected: "bg-violet-400/10",
-          cta: "bg-violet-400/15 text-violet-100",
-        };
-
+}: CardProps) {
+  const palette = riskPalette(scenario.riskLevel);
+  const description = secondaryDescription(scenario);
   return (
     <button
       type="button"
@@ -189,27 +199,140 @@ function ExtraCard({
       disabled={disabled}
       aria-pressed={selected}
       className={[
-        "flex h-full flex-col gap-3 rounded-xl border p-4 text-left transition-colors",
+        "flex h-full flex-col gap-2.5 rounded-xl border p-4 text-left transition-colors",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60",
         "disabled:cursor-not-allowed disabled:opacity-60",
         selected
           ? `${palette.borderSelected} ${palette.bgSelected}`
           : `${palette.border} ${palette.bg} hover:border-white/30`,
       ].join(" ")}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-        {tone === "positive" ? "Sandbox replay" : "Bring your own"}
-      </span>
-      <h3 className="text-sm font-semibold text-zinc-50">{title}</h3>
-      <p className="text-xs leading-relaxed text-zinc-400">{subtitle}</p>
+      <div className="flex items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${palette.badge}`}
+        >
+          {renderSecondaryIcon(scenario.riskLevel)}
+          {palette.riskLabel}
+        </span>
+      </div>
+      <h3 className="text-sm font-semibold text-zinc-50">{scenario.title}</h3>
+      <p className="text-xs leading-relaxed text-zinc-400">{description}</p>
       <span
         aria-hidden
         className={`mt-auto inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ${palette.cta}`}
       >
-        {cta}
-        <span>→</span>
+        {ctaLabel(scenario.riskLevel)}
+        <ArrowRight className="h-3 w-3" aria-hidden />
       </span>
     </button>
   );
+}
+
+function PasteCard({
+  selected,
+  disabled,
+  onSelect,
+}: {
+  selected: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={disabled}
+      aria-pressed={selected}
+      className={[
+        "flex h-full flex-col gap-2.5 rounded-xl border p-4 text-left transition-colors",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60",
+        "disabled:cursor-not-allowed disabled:opacity-60",
+        selected
+          ? "border-violet-400/60 bg-violet-400/10"
+          : "border-white/10 bg-white/[0.02] hover:border-white/30",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
+          <ClipboardPaste className="h-3 w-3" aria-hidden />
+          Bring your own
+        </span>
+      </div>
+      <h3 className="text-sm font-semibold text-zinc-50">
+        Paste your own trace
+      </h3>
+      <p className="text-xs leading-relaxed text-zinc-400">
+        Drop logs, JSON, MCP tool calls, or framework outputs.
+      </p>
+      <span
+        aria-hidden
+        className="mt-auto inline-flex w-fit items-center gap-1 rounded-md bg-violet-400/15 px-2 py-1 text-[11px] font-medium text-violet-100"
+      >
+        Open paste box
+        <ArrowRight className="h-3 w-3" aria-hidden />
+      </span>
+    </button>
+  );
+}
+
+function ReplayLink({
+  selected,
+  disabled,
+  onSelect,
+}: {
+  selected: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={disabled}
+      aria-pressed={selected}
+      className={[
+        "inline-flex w-fit items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60",
+        "disabled:cursor-not-allowed disabled:opacity-60",
+        selected
+          ? "text-emerald-200 underline-offset-4"
+          : "text-zinc-400 hover:text-emerald-200",
+      ].join(" ")}
+    >
+      <Gauge className="h-3.5 w-3.5" aria-hidden />
+      <span>
+        Or{" "}
+        <span className="underline decoration-zinc-600 decoration-dotted underline-offset-4">
+          replay the deterministic safe sample
+        </span>
+        {" "}
+        (no key required)
+      </span>
+    </button>
+  );
+}
+
+function renderSecondaryIcon(level: ScenarioRiskLevel) {
+  const className = "h-3 w-3";
+  switch (level) {
+    case "medium":
+      return <AlertTriangle className={className} aria-hidden />;
+    case "low":
+    default:
+      return <ShieldCheck className={className} aria-hidden />;
+  }
+}
+
+function secondaryDescription(scenario: TraceScenario): string {
+  switch (scenario.expectedVerdict) {
+    case "needs_review":
+      return "Customer replies without confidence thresholds.";
+    case "ready":
+      return "Read-only research workflow with audit trail.";
+    case "blocked":
+    default:
+      return scenario.shortDescription;
+  }
 }
 
 function riskPalette(level: ScenarioRiskLevel): {
@@ -225,10 +348,10 @@ function riskPalette(level: ScenarioRiskLevel): {
     case "critical":
       return {
         riskLabel: "Critical risk",
-        border: "border-red-400/30",
-        bg: "bg-red-400/[0.05]",
-        borderSelected: "border-red-400/70",
-        bgSelected: "bg-red-400/10",
+        border: "border-red-400/40",
+        bg: "bg-red-400/[0.06]",
+        borderSelected: "border-red-400/80",
+        bgSelected: "bg-red-400/[0.12]",
         badge: "bg-red-400/15 text-red-200",
         cta: "bg-red-400/15 text-red-100",
       };
@@ -265,17 +388,5 @@ function ctaLabel(level: ScenarioRiskLevel): string {
     case "low":
     default:
       return "Audit this run";
-  }
-}
-
-function expectedVerdictLabel(v: TraceScenario["expectedVerdict"]): string {
-  switch (v) {
-    case "ready":
-      return "Expected: ready";
-    case "needs_review":
-      return "Expected: needs review";
-    case "blocked":
-    default:
-      return "Expected: blocked";
   }
 }

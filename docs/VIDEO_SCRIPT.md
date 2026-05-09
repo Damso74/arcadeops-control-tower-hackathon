@@ -6,6 +6,11 @@
 >
 > Canonical question on screen at all times: _"Can this AI agent run
 > safely ship to production?"_
+>
+> **UX direction (V5 polish):** decision-first. The judge sees the
+> verdict (BLOCKED) immediately after the Gemini call, then expands
+> the full audit details only when needed. Filmable in 1440×900 or
+> 1920×1080 with at most 2 scrolls.
 
 ---
 
@@ -37,15 +42,20 @@
 **Screen:**
 
 - Cut to the `/control-tower` page.
-- Three scenario cards visible:
-  **Blocked CRM write agent** _(Critical risk)_,
-  **Needs-review support agent** _(Medium risk)_,
-  **Production-ready research agent** _(Low risk)_.
-- Hover and click the critical card.
-- The evidence timeline lights up: _Accessed customer records_,
-  _Drafted outbound emails_, _Attempted CRM deletion_, _No human
-  approval gate_, _Missing replay ID_, _Missing audit log_, _Cost
-  spike_.
+- Hero is one fold: title, sub-title, three badges, single-line flow
+  (`Pick a trace → inspect evidence → Gemini decides: ship, review or
+  block`).
+- One large hero card visible: **Blocked CRM write agent**, plus three
+  compact secondaries: **Needs-review support agent**,
+  **Production-ready research agent**, **Paste your own trace**. A
+  discreet text link below offers the deterministic safe-sample replay.
+- Click the hero card.
+- Four key evidence items appear: **Destructive action**, **Outbound
+  action**, **Cost issue**, **Audit gap** — each with a coloured icon.
+  The full evidence list lives behind a single _View full evidence_
+  disclosure.
+- Compact observability strip below the evidence: **Cost · Tokens ·
+  Tools · Flags**, with _View technical metrics_ disclosure.
 
 ---
 
@@ -58,12 +68,15 @@
 
 **Screen:**
 
-- Click **Audit this run**.
+- Click **Run Gemini judge**.
 - Loader for ~5 s.
-- The verdict block fills in:
-  - score dial — typically **30–45 / 100**,
-  - verdict pill: **BLOCKED**,
-  - one-paragraph executive summary.
+- The **decision card** fills in immediately, decision-first:
+  - score dial — typically **5–20 / 100**,
+  - verdict pill: **BLOCKED — DO NOT SHIP**,
+  - one-line **Reason** (destructive CRM deletion + outbound emails
+    without approval),
+  - one-line **Next action** (add approval gates, replay IDs, audit
+    logs and cost limits before re-scoring).
 - Caption: _"Powered by Gemini — server-side reliability judge."_
 
 ---
@@ -78,9 +91,15 @@
 
 **Screen:**
 
-- Slow pan over the Risks grid (data exposure, governance,
-  observability, cost).
-- Pan over **Missing evidence** and **Remediation plan**.
+- Below the decision card, only the **top 3 risks** are visible
+  (sorted high → low) with a `Top 3 of N risks` counter and a
+  _View all risks_ disclosure.
+- Three short audit assessment cards: **Cost**, **Tool safety**,
+  **Observability** — each one sentence. The full Gemini paragraphs
+  (cost / tool safety / observability / business value) are folded
+  behind _View full audit details_.
+- **Missing evidence** shows top 3, **Remediation plan** shows top 4,
+  each with their own disclosure for the rest.
 - Caption: _"Evidence-based. Not a vibe check."_
 
 ---
@@ -96,9 +115,12 @@
 
 **Screen:**
 
-- Scroll down to the **Recommended production guardrails** panel.
-- Show the checkboxes (the wow scenario pre-checks the destructive
-  ones).
+- Scroll once to the **Guardrails** panel.
+- Five recommended guardrails are visible (approval for destructive
+  tools, block outbound without review, per-tool cost limits, replay
+  IDs, audit logs). The remaining policies live behind _Advanced
+  guardrails_.
+- Sub-text reads _"What-if simulation only. No backend is modified."_
 - Cursor lingers on **Require human approval for destructive tools**.
 
 ---
@@ -115,12 +137,20 @@
 
 - Click **Re-score with guardrails**.
 - Loader for ~5 s.
-- The **Readiness comparison** card appears:
-  - **Before:** BLOCKED · ~38 / 100,
-  - **After:** READY WITH MONITORING · ~85 / 100 _(or NEEDS REVIEW —
-    keep whatever Gemini actually returns; the point is it changes
-    and is honest about residual risk)_.
-- Caption: _"What-if simulation — not applied to production."_
+- The **Readiness comparison** strip appears at the top of the
+  guardrails section — visually loud, with an arrow and a delta:
+  - **Before guardrails:** BLOCKED · ~10 / 100,
+  - arrow + `+50` (or whatever Gemini returns),
+  - **After guardrails:** NEEDS REVIEW · ~60 / 100 _(or READY WITH
+    MONITORING — keep whatever Gemini actually returns; the point is
+    it changes and is honest about residual risk)_.
+- A one-sentence interpretation under the comparison (e.g. _"Guardrails
+  reduced the immediate blocker, but the run still needs review before
+  production."_).
+- The full _After guardrails_ audit stays collapsed by default behind
+  _View after-guardrails audit_ — only the score, verdict, summary and
+  top 3 residual risks are shown.
+- Caption: _"What-if simulation only — not applied to production."_
 
 ---
 
