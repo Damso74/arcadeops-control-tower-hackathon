@@ -1,10 +1,11 @@
 # ArcadeOps Control Tower
 
-> **The flight recorder and Gemini-powered reliability judge for
-> autonomous AI agents.**
+> **The production gate for autonomous AI agents.**
 >
-> Replay an agent run, let Gemini judge production readiness, and get a
-> risk-aware remediation plan.
+> _Can this AI agent run safely ship to production?_ Replay or paste an
+> agent trace. Gemini audits the plan, tools, cost, risks and output,
+> then returns a production-readiness verdict and recommends guardrails
+> you can re-score against.
 
 Built for **AI Agent Olympics** · Lablab.ai · Milan AI Week 2026.
 
@@ -51,18 +52,36 @@ Three layers, one screen:
 
 ## 3. Demo flow
 
-> From mission to verdict in under two minutes.
+> From an unsafe agent run to a guarded re-score in under two minutes.
 
 1. Open `/control-tower`.
-2. Pick one of three pre-canned agent run traces.
-3. Click **Replay an agent run**. Phases pop in, tool calls stream
-   with statuses + ms, observability metrics fill in, the final
-   report appears.
-4. Click **Run Gemini reliability judge**. Gemini reads the trace
-   server-side and returns a typed verdict — score, risks, missing
-   evidence, remediation plan.
-5. Re-run, change missions, or inspect the JSON contract — every
-   run is fully reproducible.
+2. Pick a recorded run — the **Blocked CRM write agent** (critical
+   risk) is the wow scenario, but a **needs-review support agent** and
+   a **production-ready research agent** are also one click away.
+3. Inspect the evidence — tool calls, missing approvals, missing
+   audit trail, cost spikes — before any model call.
+4. Click **Audit this run**. Gemini reads the trace server-side and
+   returns a typed verdict: score, verdict, risks, missing evidence,
+   remediation plan.
+5. Pick the recommended guardrails and click **Re-score with
+   guardrails**. A second pass returns a what-if simulation: same
+   trace, same Gemini, but evaluated as if the guardrails were
+   already implemented. The before / after comparison shows the
+   readiness delta.
+
+You can also **paste your own trace** (logs, JSON, framework outputs,
+MCP tool logs) up to 12 000 characters — the server redacts emails,
+URLs, secrets and IDs before reaching the model. Or take the **safe
+sample replay** path for a quick deterministic walkthrough.
+
+### Interactive judging modes
+
+| Mode                       | What it does                                                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Replay sample run**      | Streams the bundled deterministic trace via SSE. Perfect for video — same events every time, no API key required.           |
+| **Audit unsafe sample**    | One-click audit of the **Blocked CRM write agent** scenario. Gemini blocks the run and explains why.                        |
+| **Paste your own trace**   | Drop any agent trace (≤ 12 000 chars). Server-side sanitization scrubs PII / secrets, then Gemini judges the cleaned text.  |
+| **Simulate guardrails**    | Pick a checklist of production guardrails and re-score the same run as a what-if simulation. Returns a residual-risk view. |
 
 ## 4. Google Gemini Reliability Judge
 
@@ -72,16 +91,26 @@ This is the differentiator versus a generic "agent demo".
   (Node.js runtime, `maxDuration: 60`, hard 30-second client timeout).
 - Model: defaults to **`gemini-2.5-flash`** (fast, cheap, returns valid
   JSON consistently). Override with `GEMINI_MODEL`.
-- Request: a typed `JudgeRunSnapshot` projected from the visible run
-  state — mission prompt, phases, tool calls, observability metrics,
-  risk flags, final result. **No orgId, userId, taskId, agentId, secrets
-  or internal IDs are ever sent.**
+- Four input modes: `sample_replay` (bundled fixture), `scenario_trace`
+  (pre-canned scenarios), `pasted_trace` (free-form user paste, sanitized
+  server-side, ≤ 12 000 chars), and `remediation_simulation` (re-score
+  the same run with guardrails applied as a what-if).
 - Output: a strict JSON object validated by
   [`src/lib/control-tower/gemini-types.ts`](src/lib/control-tower/gemini-types.ts).
   Off-spec responses are normalized; unparseable responses surface a
   clean error to the UI.
+- Defensive guards:
+  - 5 requests / 10 minutes / IP rate limit
+    ([`src/lib/server/rate-limit.ts`](src/lib/server/rate-limit.ts)),
+  - 12 000-char hard cap on pasted traces,
+  - server-side redaction of emails, URLs, bearer tokens, common API
+    key prefixes and UUIDs before the prompt is built,
+  - 30-second upstream timeout, propagated client disconnect → cancel,
+  - no auto-run anywhere — every Gemini call is an explicit user click.
 - Failure modes are explicit:
   - missing key → 503 `GEMINI_NOT_CONFIGURED` (panel hidden in UI),
+  - rate-limited → 429 `RATE_LIMITED` (with `Retry-After` header),
+  - bad payload → 400 `INVALID_REQUEST`,
   - upstream HTTP error → 502 `GEMINI_REQUEST_FAILED`,
   - unparseable JSON → 502 `GEMINI_INVALID_RESPONSE`.
 
@@ -90,6 +119,37 @@ The Gemini API key never reaches the browser. The
 returns only booleans + the public model name so the UI can decide
 **at runtime** whether to show the judge panel — no rebuild needed
 when the key is added or rotated.
+
+### 4.1. Deterministic production policy gates
+
+ArcadeOps combines **Gemini reasoning with deterministic production
+policy gates**. Gemini audits the trace and explains risks; ArcadeOps
+applies non-negotiable rules on top of the model verdict, so a
+manifestly unsafe run can never silently be marked READY.
+
+The gates live in
+[`src/lib/control-tower/policy-gates.ts`](src/lib/control-tower/policy-gates.ts)
+(pure TypeScript, no I/O) and are applied server-side in the judge
+route after `normalizeJudgeResult`. Today's rules:
+
+| Rule | Severity | Effect on verdict |
+|---|---|---|
+| Destructive action attempted without human approval | high | caps verdict at `blocked`, score ≤ 45 |
+| Outbound customer message attempted without review | high | caps verdict at `blocked`, score ≤ 45 |
+| Write actions without replay or audit evidence | high | caps verdict at `needs_review`, score ≤ 70 |
+| Cost budget exceeded or unbounded | medium | caps verdict at `needs_review`, score ≤ 75 |
+
+The gates only **tighten** the verdict — they never relax it, never
+overwrite Gemini's prose, and only append a risk if Gemini did not
+already flag the same concern. In `remediation_simulation` mode, a
+rule is *covered* (and does not fire) when the user-selected
+guardrails clearly address it (e.g. "Require human approval for
+destructive tools" covers the destructive-without-approval rule).
+
+The decision card surfaces a short `Policy gate: …` badge whenever a
+rule fires, plus a disclosure listing the full set of triggered
+rules — making it explicit that *Gemini provided the audit; ArcadeOps
+applied non-negotiable production gates*.
 
 ## 5. Replay vs live
 

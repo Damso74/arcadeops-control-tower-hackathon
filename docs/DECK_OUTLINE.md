@@ -8,11 +8,11 @@
 ## Slide 1 — Title
 
 - **ArcadeOps Control Tower**
-- One-liner: _The flight recorder and Gemini-powered reliability judge
-  for autonomous AI agents._
+- Canonical question: _"Can this AI agent run safely ship to production?"_
+- Sub-line: _The production gate for autonomous AI agents._
 - Footer: AI Agent Olympics · Lablab.ai · Milan AI Week 2026
-- Visual: hero screenshot of `/control-tower` post-replay (Observability
-  + Result + Gemini verdict visible).
+- Visual: hero screenshot of `/control-tower` post-judge of the **Blocked
+  CRM write agent** scenario, with the BLOCKED verdict pill visible.
 
 ## Slide 2 — Problem
 
@@ -45,14 +45,17 @@
 
 ## Slide 5 — Demo flow
 
-- Headline: _"From mission to verdict in under two minutes."_
-- 5-step flow with arrows:
-  1. Replay an agent run
-  2. Inspect timeline + tool calls
-  3. Read observability metrics
-  4. Run Gemini judge
-  5. Get verdict + remediation plan
-- Visual: tiny screenshots in sequence.
+- Headline: _"From an unsafe agent run to a guarded re-score in under
+  two minutes."_
+- 4-step flow with arrows:
+  1. **Pick the unsafe run** _(Blocked CRM write agent)_
+  2. **Gemini blocks it** _(typed risks + missing evidence)_
+  3. **Pick guardrails** _(approval, audit, cost limits, replay IDs)_
+  4. **Re-score** _(before/after readiness card)_
+- Below the flow, in mono: `Unsafe run → Gemini BLOCKED → Guardrails →
+  Re-score`.
+- Visual: tiny screenshots in sequence — landing → BLOCKED verdict →
+  guardrails checkboxes → before/after readiness card.
 
 ## Slide 6 — Gemini Reliability Judge (what makes us competitive)
 
@@ -87,12 +90,13 @@
 
 ## Slide 8 — Business value + closing
 
-- Headline: _"Make autonomous agents trustworthy enough to scale."_
+- Headline: _"Catch unsafe AI agent runs before they ship."_
 - Three value props:
-  - **Audit cost** drops: a single screen replaces scattered logs.
-  - **Risk-adjusted velocity**: ship sooner, with evidence.
+  - **Block before deploy**: a model judges the run, not a vibe check.
+  - **Guardrails as code**: simulate the fix before paying for it.
   - **Compliance-friendly**: every run has a JSON verdict + trail.
-- Closing line: _"ArcadeOps Control Tower — replay, judge, ship."_
+- Closing line: _"ArcadeOps Control Tower — replay, paste, judge,
+  guard, ship."_
 - URLs: GitHub · Demo · Lablab project page.
 
 ---

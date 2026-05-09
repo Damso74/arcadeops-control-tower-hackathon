@@ -44,6 +44,24 @@ export interface GeminiJudgeResult {
   remediationPlan: string[];
   executiveDecision: string;
   businessValue: string;
+  /**
+   * Optional deterministic production policy gate result. Attached by the
+   * server route after `normalizeJudgeResult`. Gemini reasons over the
+   * trace; ArcadeOps applies non-negotiable production rules on top of
+   * the verdict (destructive-without-approval, outbound-without-review,
+   * write-without-audit, unbounded-cost). When `triggered === true` the
+   * UI shows a discreet badge in the decision card explaining that a
+   * hard production rule fired in addition to the model verdict.
+   */
+  policyGate?: {
+    triggered: boolean;
+    rules: Array<{
+      id: string;
+      label: string;
+      severity: "medium" | "high";
+      reason: string;
+    }>;
+  };
 }
 
 const VALID_VERDICTS: ReadonlySet<GeminiVerdict> = new Set([
@@ -95,9 +113,46 @@ export interface JudgeRunSnapshot {
   };
 }
 
+/**
+ * Judge invocation modes.
+ *
+ * - `sample_replay` — the original V0–V3 path: the user replays the
+ *   bundled trace, the snapshot is built from the streamed events, and
+ *   Gemini is asked to audit it.
+ * - `scenario_trace` — one of the pre-canned trace scenarios is selected
+ *   (`scenarioId`). The route uses the bundled trace text + snapshot for
+ *   that scenario as the audit evidence. The user never types anything.
+ * - `pasted_trace` — the user pasted their own free-form agent trace.
+ *   The text is sanitized server-side, length-clamped, and audited as-is.
+ * - `remediation_simulation` — second pass on top of any of the above.
+ *   The original trace is re-judged *as if* the listed `guardrails` were
+ *   already implemented in production. The verdict and residual risks
+ *   may change, but Gemini is asked to remain evidence-based and to
+ *   keep residual risks where appropriate.
+ */
+export type JudgeMode =
+  | "sample_replay"
+  | "scenario_trace"
+  | "pasted_trace"
+  | "remediation_simulation";
+
 export interface JudgeRequestBody {
+  /**
+   * Optional explicit mode. When omitted the route falls back to
+   * `sample_replay` for backward compatibility with V3 clients that
+   * only sent `runSnapshot` + `mission`.
+   */
+  mode?: JudgeMode;
+  /** Required for `scenario_trace`. Optional for `remediation_simulation`. */
+  scenarioId?: string;
+  /** Free-form pasted trace. Required for `pasted_trace`. */
+  traceText?: string;
+  /** Snapshot built from the visible run state. Used by `sample_replay`. */
   runSnapshot?: JudgeRunSnapshot;
+  /** Mission override for `sample_replay`. Capped server-side. */
   mission?: string;
+  /** Selected guardrails for `remediation_simulation`. Capped server-side. */
+  guardrails?: string[];
 }
 
 export interface JudgeErrorResponse {
@@ -106,6 +161,8 @@ export interface JudgeErrorResponse {
     | "GEMINI_NOT_CONFIGURED"
     | "GEMINI_REQUEST_FAILED"
     | "GEMINI_INVALID_RESPONSE"
+    | "INVALID_REQUEST"
+    | "RATE_LIMITED"
     | "INTERNAL_ERROR";
   message?: string;
   /**
