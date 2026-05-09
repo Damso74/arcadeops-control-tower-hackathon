@@ -35,9 +35,14 @@ yarn-error.log*
 .env.local
 .env.*
 .env*
+# Allow the documented template (no secrets — only variable names + comments).
+!.env.example
 
 # vercel
 .vercel
+
+# Cursor agent local state — not part of the demo
+.cursor/
 
 # typescript
 *.tsbuildinfo

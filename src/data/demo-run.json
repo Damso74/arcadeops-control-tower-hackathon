@@ -1,0 +1,147 @@
+{
+  "mission": {
+    "id": "audit-agent-workflow",
+    "title": "Audit an autonomous AI agent workflow",
+    "prompt": "Audit an autonomous AI agent workflow, inspect its plan, tool calls, cost, model, provider, risks, and generate a production-readiness report."
+  },
+  "observability": {
+    "provider": "OpenAI",
+    "model": "GPT-5.5",
+    "inputTokens": 8420,
+    "outputTokens": 2190,
+    "totalTokens": 10610,
+    "costUsd": 0.087,
+    "latencyMs": 74200,
+    "toolCallsCount": 5,
+    "riskFlags": [
+      "External web data",
+      "Cost threshold OK",
+      "No destructive action",
+      "Human approval not required"
+    ]
+  },
+  "result": {
+    "title": "Production readiness report generated",
+    "summary": "The audited agent workflow is production-ready with moderate monitoring requirements. Tool usage stayed within the cost envelope, no destructive action was triggered, and observability coverage is sufficient for a controlled rollout.",
+    "recommendations": [
+      "Add tool-level cost thresholds to flag drift across providers.",
+      "Enable replay for failed runs so on-call can reproduce incidents.",
+      "Require human approval for destructive actions (write, delete, send).",
+      "Forward execution traces to your existing observability stack."
+    ]
+  },
+  "events": [
+    { "type": "phase_change", "phase": "analyze", "status": "running", "delayMs": 200 },
+    {
+      "type": "step",
+      "title": "Parse mission intent",
+      "description": "Identify scope: production-readiness audit of an autonomous agent workflow.",
+      "status": "completed",
+      "delayMs": 600
+    },
+    { "type": "token", "text": "Reading mission requirements", "phase": "analyze", "delayMs": 200 },
+    { "type": "token", "text": "…", "phase": "analyze", "delayMs": 250 },
+    { "type": "phase_change", "phase": "plan", "status": "running", "delayMs": 300 },
+    {
+      "type": "step",
+      "title": "Create execution plan",
+      "description": "Decompose the audit into 5 auditable steps with explicit tool budgets.",
+      "status": "completed",
+      "delayMs": 700
+    },
+    { "type": "token", "text": "Drafting 5-step audit plan", "phase": "plan", "delayMs": 200 },
+    { "type": "phase_change", "phase": "execute", "status": "running", "delayMs": 300 },
+    {
+      "type": "tool_call",
+      "name": "inspect_agent_run",
+      "description": "Loads the target agent run trace and metadata for static analysis.",
+      "status": "running",
+      "delayMs": 250
+    },
+    {
+      "type": "tool_call",
+      "name": "inspect_agent_run",
+      "description": "Run trace loaded — 12 steps, 4 tool calls, 1 sub-agent fork.",
+      "status": "completed",
+      "durationMs": 1800,
+      "delayMs": 1800
+    },
+    {
+      "type": "tool_call",
+      "name": "web_search",
+      "description": "Searches for agent observability patterns and risk frameworks.",
+      "status": "running",
+      "delayMs": 250
+    },
+    {
+      "type": "tool_call",
+      "name": "web_search",
+      "description": "Top 8 sources retrieved across SRE, AI safety and agent governance literature.",
+      "status": "completed",
+      "durationMs": 2200,
+      "delayMs": 2200
+    },
+    {
+      "type": "tool_call",
+      "name": "browse_url",
+      "description": "Fetches https://arcadeops.dev/runbooks/agent-readiness for canonical guidance.",
+      "status": "running",
+      "delayMs": 250
+    },
+    {
+      "type": "tool_call",
+      "name": "browse_url",
+      "description": "Page parsed — 1 200 words on agent readiness controls.",
+      "status": "completed",
+      "durationMs": 1900,
+      "delayMs": 1900
+    },
+    {
+      "type": "tool_call",
+      "name": "evaluate_risks",
+      "description": "Cross-checks plan against risk taxonomy: data exposure, cost drift, destructive ops.",
+      "status": "running",
+      "delayMs": 250
+    },
+    {
+      "type": "tool_call",
+      "name": "evaluate_risks",
+      "description": "4 risk flags surfaced, 0 blocking. Approval required for none of the executed actions.",
+      "status": "completed",
+      "durationMs": 1500,
+      "delayMs": 1500
+    },
+    {
+      "type": "tool_call",
+      "name": "generate_report",
+      "description": "Composes the production-readiness report with recommendations and audit trail.",
+      "status": "running",
+      "delayMs": 250
+    },
+    {
+      "type": "tool_call",
+      "name": "generate_report",
+      "description": "Report finalized — 4 recommendations, 12 verifiable evidence points.",
+      "status": "completed",
+      "durationMs": 1700,
+      "delayMs": 1700
+    },
+    { "type": "phase_change", "phase": "evaluate", "status": "running", "delayMs": 250 },
+    {
+      "type": "step",
+      "title": "Evaluate workflow safety",
+      "description": "All tool calls are non-destructive; cost stayed under $0.10; no PII surfaced.",
+      "status": "completed",
+      "delayMs": 600
+    },
+    { "type": "phase_change", "phase": "summarize", "status": "running", "delayMs": 250 },
+    { "type": "token", "text": "Composing the audit summary", "phase": "summarize", "delayMs": 200 },
+    {
+      "type": "step",
+      "title": "Compile audit trail",
+      "description": "Aggregate plan, tool calls, observability metrics and risk flags.",
+      "status": "completed",
+      "delayMs": 700
+    }
+  ]
+}
