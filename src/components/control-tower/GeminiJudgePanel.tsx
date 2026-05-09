@@ -6,14 +6,30 @@ import type {
   GeminiJudgeResult,
   GeminiRisk,
   GeminiVerdict,
-  JudgeRunSnapshot,
+  JudgeRequestBody,
 } from "@/lib/control-tower/gemini-types";
 
 interface GeminiJudgePanelProps {
-  /** Built from the streamed Control Tower events; null until a run completes. */
-  snapshot: JudgeRunSnapshot | null;
-  /** Optional override mission text shown in the request. */
-  missionText?: string;
+  /**
+   * The body the panel will POST to /api/gemini/judge when the user
+   * clicks the action button. When `null`, the button is disabled and
+   * an empty-state message is rendered.
+   */
+  requestBody: JudgeRequestBody | null;
+  /**
+   * Optional callback fired once the judge returns a parseable result.
+   * Used by the parent to show the guardrails / re-score panel.
+   */
+  onResult?: (result: GeminiJudgeResult) => void;
+  /** When true, force the panel to a disabled state (e.g. parent loading). */
+  disabledOverride?: boolean;
+  /** Override the action button label. Defaults to the V3 wording. */
+  actionLabel?: string;
+  /**
+   * What to display when the panel has no request to send (e.g. the user
+   * has not picked a run yet). Defaults to the V3 wording.
+   */
+  emptyHint?: string;
 }
 
 interface CapabilitiesResponse {
@@ -26,7 +42,13 @@ type JudgeState =
   | { status: "ready"; result: GeminiJudgeResult }
   | { status: "error"; message: string };
 
-export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProps) {
+export function GeminiJudgePanel({
+  requestBody,
+  onResult,
+  disabledOverride,
+  actionLabel,
+  emptyHint,
+}: GeminiJudgePanelProps) {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [model, setModel] = useState<string | null>(null);
   const [state, setState] = useState<JudgeState>({ status: "idle" });
@@ -57,9 +79,9 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
   }, []);
 
   // Cancel any in-flight judge request when the component unmounts.
-  // The parent forces a remount via `key` whenever the snapshot identity
-  // changes (new replay, reset), so we don't need an effect to reset state
-  // here — that would be a `set-state-in-effect` anti-pattern in React 19.
+  // The parent forces a remount via `key` whenever the input identity
+  // changes (new scenario, reset), so we don't need an effect to reset
+  // state here — that would be a `set-state-in-effect` anti-pattern.
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -67,7 +89,7 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
   }, []);
 
   const runJudge = useCallback(async () => {
-    if (!snapshot) return;
+    if (!requestBody) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -77,7 +99,7 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
       const res = await fetch("/api/gemini/judge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runSnapshot: snapshot, mission: missionText }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
         cache: "no-store",
       });
@@ -95,6 +117,7 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
         return;
       }
       setState({ status: "ready", result: payload.result });
+      onResult?.(payload.result);
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       setState({
@@ -102,7 +125,7 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
         message: (err as Error).message || "Failed to call Gemini.",
       });
     }
-  }, [snapshot, missionText]);
+  }, [requestBody, onResult]);
 
   // While we are still discovering availability, render nothing — avoids
   // a flash of "not configured" on slow networks.
@@ -117,14 +140,17 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
         <span className="font-medium text-zinc-400">
           Gemini reliability judge
         </span>{" "}
-        is available when configured. The replay above runs without any API key —
-        set <code className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-zinc-300">GEMINI_API_KEY</code>{" "}
-        to enable a live production-readiness verdict on the trace.
+        is available when configured. The page works fully without it — set{" "}
+        <code className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-zinc-300">
+          GEMINI_API_KEY
+        </code>{" "}
+        to enable a live production-readiness verdict on every run.
       </aside>
     );
   }
 
-  const disabled = !snapshot || state.status === "loading";
+  const disabled =
+    Boolean(disabledOverride) || !requestBody || state.status === "loading";
 
   return (
     <section
@@ -141,13 +167,11 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
               <span className="text-[10px] text-zinc-500">{model}</span>
             ) : null}
           </div>
-          <h3 className="text-lg font-semibold text-zinc-50">
-            Reliability Judge
-          </h3>
+          <h3 className="text-lg font-semibold text-zinc-50">Reliability Judge</h3>
           <p className="max-w-xl text-sm text-zinc-400">
-            Gemini reads the recorded agent trace and returns a production-readiness
-            verdict, risk inventory, cost &amp; tool-safety assessment, and a
-            remediation plan.
+            Gemini reads the recorded agent trace and returns a
+            production-readiness verdict, risk inventory, cost &amp; tool-safety
+            assessment, and a remediation plan.
           </p>
         </div>
 
@@ -164,15 +188,15 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
           ) : state.status === "ready" ? (
             "Re-run Gemini judge"
           ) : (
-            "Run Gemini reliability judge"
+            actionLabel ?? "Run Gemini reliability judge"
           )}
         </button>
       </header>
 
-      {!snapshot ? (
+      {!requestBody ? (
         <p className="rounded-lg border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-xs text-zinc-500">
-          Replay an agent run first — Gemini needs the trace to produce a
-          verdict.
+          {emptyHint ??
+            "Choose a run, replay the safe sample, or paste a trace — Gemini needs evidence before it can judge."}
         </p>
       ) : null}
 
@@ -192,7 +216,12 @@ export function GeminiJudgePanel({ snapshot, missionText }: GeminiJudgePanelProp
   );
 }
 
-function JudgeResultView({ result }: { result: GeminiJudgeResult }) {
+/**
+ * Standalone result renderer — used by the main panel and by the
+ * "After guardrails" panel. Pure (no fetches, no state) so it can be
+ * mounted twice for the before/after comparison.
+ */
+export function JudgeResultView({ result }: { result: GeminiJudgeResult }) {
   const verdictMeta = verdictPalette(result.verdict);
 
   return (
@@ -324,7 +353,6 @@ function ScoreDial({
   verdict: GeminiVerdict;
 }) {
   const palette = verdictPalette(verdict);
-  // Conic gradient avoids pulling in a chart library for a single ring.
   const angle = Math.max(0, Math.min(360, (score / 100) * 360));
   return (
     <div className="flex flex-col items-center gap-1">
@@ -367,7 +395,7 @@ function Spinner() {
   );
 }
 
-function verdictPalette(verdict: GeminiVerdict): {
+export function verdictPalette(verdict: GeminiVerdict): {
   label: string;
   classes: string;
   dial: string;
@@ -375,7 +403,7 @@ function verdictPalette(verdict: GeminiVerdict): {
   switch (verdict) {
     case "ready":
       return {
-        label: "Production-ready",
+        label: "Ready with monitoring",
         classes: "bg-emerald-400/15 text-emerald-200",
         dial: "rgb(52, 211, 153)",
       };
@@ -431,6 +459,10 @@ function friendlyCodeMessage(code: string): string {
       return "The request to Gemini failed. Try again in a moment.";
     case "GEMINI_INVALID_RESPONSE":
       return "Gemini returned an unparseable response. Try re-running the judge.";
+    case "RATE_LIMITED":
+      return "Too many judge requests. Please try again in a few minutes.";
+    case "INVALID_REQUEST":
+      return "The judge could not understand the request payload.";
     default:
       return "Gemini judge failed unexpectedly.";
   }

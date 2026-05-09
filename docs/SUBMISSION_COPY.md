@@ -11,16 +11,17 @@ the AI Agent Olympics submission form. Copy from here, paste into Lablab.
 
 ## Tagline (one-liner)
 
-> Replay an AI agent run, let Gemini judge production readiness, and get a
-> risk-aware remediation plan.
+> _Can this AI agent run safely ship to production?_ Replay or paste an
+> agent trace. Gemini judges it, blocks unsafe runs, recommends guardrails,
+> and re-scores the same run as a what-if simulation.
 
 ---
 
 ## Short description (≤ 250 characters)
 
-ArcadeOps Control Tower is the flight recorder and Gemini-powered reliability
-judge for autonomous AI agents. Replay every run, inspect tools, cost and
-risks, then get a production-readiness verdict.
+ArcadeOps Control Tower is the production gate for autonomous AI agents.
+Replay or paste a run trace. Gemini blocks unsafe runs, recommends
+guardrails, and re-scores the run as a what-if simulation.
 
 ---
 
@@ -34,17 +35,25 @@ before scaling them up: **is this run actually safe to ship?**
 auditable trace and lets a model — **Google Gemini** — act as a
 reliability judge over that trace.
 
+The demo includes an unsafe CRM-agent scenario. Gemini blocks the run,
+explains the risk, recommends production guardrails, then re-scores the
+run as a what-if remediation simulation. The judge is honest: re-scoring
+does not always return "ready" — residual risks stay visible.
+
 The hackathon demo is structured as three layers:
 
-1. **Replay layer.** A deterministic SSE stream replays a real agent
-   trace: phases (analyze → plan → execute → evaluate → summarize), tool
-   calls with status and duration, observability metrics (tokens,
-   cost USD, latency, provider/model), risk flags and the final result.
-   No API key required. Identical traces on every run — perfect for
-   video and judging.
+1. **Trace ingestion layer.** Three input modes, one judge:
+   - **Recorded scenarios** — Blocked CRM write agent (critical),
+     Needs-review support agent (medium), Production-ready research
+     agent (low). Each ships with a textual trace, an evidence card
+     list, and snapshot observability metrics.
+   - **Deterministic SSE replay** of a sanitized real agent run,
+     for video reproducibility (no API key required).
+   - **Pasted trace** — free-form text up to 12 000 characters,
+     sanitized server-side (emails, URLs, bearer tokens, API keys,
+     UUIDs all redacted before the prompt is built).
 2. **Gemini Reliability Judge.** When `GEMINI_API_KEY` is configured,
-   Gemini 2.5 Flash reads the recorded trace and returns a strict
-   JSON verdict:
+   Gemini 2.5 Flash reads the trace and returns a strict JSON verdict:
    - `readinessScore` (0–100),
    - `verdict` (`ready` / `needs_review` / `blocked`),
    - typed `risks` (severity × category × evidence),
@@ -52,11 +61,19 @@ The hackathon demo is structured as three layers:
    - `missingEvidence` (what a real reviewer would still need),
    - a numbered `remediationPlan`,
    - an `executiveDecision` and a `businessValue` paragraph.
+
+   On top of this, **Simulate guardrails and re-score** runs the judge
+   a second time on the same trace, this time as a what-if remediation
+   simulation. The before/after readiness comparison is the wow moment
+   of the demo: a critical run can move from BLOCKED to READY WITH
+   MONITORING — or stay BLOCKED if Gemini still finds residual risk.
 3. **Deployment layer.** Public demo on Vercel. Dockerfile + `/api/health`
    + standalone Next.js bundle make the same image trivially deployable
    to **Vultr** (VPS, Container Registry, or Vultr Kubernetes Engine).
    Replay works with zero env vars; the Gemini judge is enabled by
-   simply adding the key.
+   simply adding the key. The judge endpoint is rate-limited (5 req /
+   10 min / IP) and pasted traces are hard-capped to 12 000 characters
+   and sanitized server-side.
 
 Behind the scenes, the same Control Tower event model is also wired to
 the live ArcadeOps backend through a server-side proxy. That live mode
