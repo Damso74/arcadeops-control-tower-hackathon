@@ -108,6 +108,22 @@ export interface JudgeErrorResponse {
     | "GEMINI_INVALID_RESPONSE"
     | "INTERNAL_ERROR";
   message?: string;
+  /**
+   * Optional non-sensitive diagnostic payload. Surfaced only when the upstream
+   * model returned an unparseable answer, so operators can tell apart "model
+   * hit MAX_TOKENS", "model hit a SAFETY filter", or "model returned prose
+   * around the JSON". Never contains the API key or the full prompt.
+   */
+  debug?: {
+    finishReason?: string;
+    promptTokens?: number;
+    candidatesTokens?: number;
+    thoughtsTokens?: number;
+    totalTokens?: number;
+    rawHead?: string;
+    rawTail?: string;
+    rawLength?: number;
+  };
 }
 
 /**

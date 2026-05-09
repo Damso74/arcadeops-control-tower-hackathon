@@ -37,7 +37,13 @@ export const maxDuration = 60;
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const REQUEST_TIMEOUT_MS = 30_000;
-const MAX_OUTPUT_TOKENS = 1_400;
+// Gemini 2.5-flash is a "thinking" model: when thinkingBudget is non-zero,
+// the model consumes a large slice of maxOutputTokens on internal reasoning
+// before emitting the visible answer. The judge's prompt is heavily
+// constrained (strict JSON schema, no chain-of-thought needed), so we
+// disable thinking and reserve the full budget for the JSON answer.
+const MAX_OUTPUT_TOKENS = 4_096;
+const THINKING_BUDGET = 0;
 
 const fixture = demoRun as DemoRunFixture;
 
@@ -121,6 +127,7 @@ export async function POST(req: Request): Promise<Response> {
           topP: 0.9,
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           responseMimeType: "application/json",
+          thinkingConfig: { thinkingBudget: THINKING_BUDGET },
         },
       }),
       signal: abortController.signal,
@@ -165,11 +172,15 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const text = extractGeminiText(payload);
+  const debug = buildDebugMetadata(payload, text);
   if (!text) {
     return jsonError(502, {
       ok: false,
       code: "GEMINI_INVALID_RESPONSE",
-      message: "Gemini API returned an empty completion.",
+      message: debug?.finishReason
+        ? `Gemini API returned an empty completion (finishReason: ${debug.finishReason}).`
+        : "Gemini API returned an empty completion.",
+      debug,
     });
   }
 
@@ -178,7 +189,11 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError(502, {
       ok: false,
       code: "GEMINI_INVALID_RESPONSE",
-      message: "Gemini did not return a parseable JSON judgment.",
+      message:
+        debug?.finishReason === "MAX_TOKENS"
+          ? "Gemini hit MAX_TOKENS before completing the JSON. Increase maxOutputTokens or reduce the requested fields."
+          : "Gemini did not return a parseable JSON judgment.",
+      debug,
     });
   }
 
@@ -381,6 +396,47 @@ function buildPrompt(snapshot: JudgeRunSnapshot, missionOverride: string | null)
     "",
     "Return ONLY the JSON object — no prose, no markdown fences.",
   ].join("\n");
+}
+
+/**
+ * Build a non-sensitive diagnostic payload from a Gemini response so the UI
+ * (and Vercel logs) can tell apart "MAX_TOKENS truncation", "SAFETY block",
+ * "thinking ate the budget", etc. without ever leaking the API key.
+ */
+function buildDebugMetadata(
+  payload: unknown,
+  text: string | null,
+): JudgeErrorResponse["debug"] {
+  if (!payload || typeof payload !== "object") return undefined;
+  const p = payload as {
+    candidates?: Array<{ finishReason?: unknown }>;
+    usageMetadata?: {
+      promptTokenCount?: unknown;
+      candidatesTokenCount?: unknown;
+      thoughtsTokenCount?: unknown;
+      totalTokenCount?: unknown;
+    };
+  };
+  const candidate = p.candidates?.[0];
+  const usage = p.usageMetadata;
+  const finishReason =
+    typeof candidate?.finishReason === "string" ? candidate.finishReason : undefined;
+  const debug: NonNullable<JudgeErrorResponse["debug"]> = {};
+  if (finishReason) debug.finishReason = finishReason;
+  if (typeof usage?.promptTokenCount === "number") debug.promptTokens = usage.promptTokenCount;
+  if (typeof usage?.candidatesTokenCount === "number") {
+    debug.candidatesTokens = usage.candidatesTokenCount;
+  }
+  if (typeof usage?.thoughtsTokenCount === "number") {
+    debug.thoughtsTokens = usage.thoughtsTokenCount;
+  }
+  if (typeof usage?.totalTokenCount === "number") debug.totalTokens = usage.totalTokenCount;
+  if (typeof text === "string" && text.length > 0) {
+    debug.rawLength = text.length;
+    debug.rawHead = text.slice(0, 200);
+    if (text.length > 400) debug.rawTail = text.slice(-200);
+  }
+  return Object.keys(debug).length > 0 ? debug : undefined;
 }
 
 /**
