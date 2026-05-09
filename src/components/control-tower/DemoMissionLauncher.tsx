@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { JudgeRunSnapshot } from "@/lib/control-tower/gemini-types";
 import { subscribeToControlTower } from "@/lib/control-tower/sse";
 import {
   DEMO_MISSIONS,
@@ -23,6 +24,12 @@ import { ToolCallCard, type ToolCallView } from "./ToolCallCard";
 
 interface DemoMissionLauncherProps {
   liveAvailable: boolean;
+  /**
+   * Notified once observability + result are both available for the current
+   * run. Used by the parent to feed the Gemini Reliability Judge. Receives
+   * `null` whenever the user resets or starts a new run.
+   */
+  onSnapshotReady?: (snapshot: JudgeRunSnapshot | null, missionPrompt: string) => void;
 }
 
 type RunStatus = "idle" | "running" | "completed" | "error";
@@ -51,6 +58,7 @@ const INITIAL_STATE: RunState = {
 
 export function DemoMissionLauncher({
   liveAvailable,
+  onSnapshotReady,
 }: DemoMissionLauncherProps) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>(
     DEMO_MISSIONS.find((m) => m.default)?.id ?? DEMO_MISSIONS[0].id,
@@ -58,6 +66,7 @@ export function DemoMissionLauncher({
   const [state, setState] = useState<RunState>(INITIAL_STATE);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const toolCallIndexRef = useRef<Map<string, number>>(new Map());
+  const lastSnapshotKeyRef = useRef<string | null>(null);
 
   const selectedMission = useMemo<MissionCard>(
     () =>
@@ -70,6 +79,35 @@ export function DemoMissionLauncher({
       unsubscribeRef.current?.();
     };
   }, []);
+
+  // Build and publish the JudgeRunSnapshot whenever a run reaches a state
+  // where observability + result are both populated. We dedupe with a key
+  // so we don't fire the callback on every unrelated re-render.
+  useEffect(() => {
+    if (!onSnapshotReady) return;
+    const ready =
+      state.observability !== null &&
+      state.result !== null &&
+      (state.status === "completed" || state.status === "running");
+    if (!ready) {
+      if (lastSnapshotKeyRef.current !== null) {
+        lastSnapshotKeyRef.current = null;
+        onSnapshotReady(null, missionPromptFor(selectedMission));
+      }
+      return;
+    }
+    const snapshot = buildSnapshot(state, selectedMission);
+    const key = JSON.stringify({
+      mid: snapshot.mission.id,
+      cost: snapshot.observability.costUsd,
+      tokens: snapshot.observability.totalTokens,
+      tools: snapshot.toolCalls.length,
+      title: snapshot.result.title,
+    });
+    if (key === lastSnapshotKeyRef.current) return;
+    lastSnapshotKeyRef.current = key;
+    onSnapshotReady(snapshot, missionPromptFor(selectedMission));
+  }, [onSnapshotReady, selectedMission, state]);
 
   const handleEvent = useCallback((event: ControlTowerEvent) => {
     setState((prev) => applyEvent(prev, event, toolCallIndexRef.current));
@@ -170,7 +208,7 @@ export function DemoMissionLauncher({
             disabled={replayDisabled}
             className="inline-flex items-center gap-2 rounded-md bg-zinc-100 px-5 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            ▶ Replay demo mission
+            ▶ Replay an agent run
           </button>
           {liveAvailable ? (
             <button
@@ -428,6 +466,47 @@ function applyEvent(
     default:
       return state;
   }
+}
+
+/**
+ * Build the JudgeRunSnapshot consumed by the Gemini Reliability Judge.
+ * Pure projection of the visible run state — no IDs, no internal handles.
+ */
+function buildSnapshot(state: RunState, mission: MissionCard): JudgeRunSnapshot {
+  return {
+    mission: {
+      id: mission.id,
+      title: mission.title,
+      prompt: missionPromptFor(mission),
+    },
+    observability: state.observability ?? {
+      provider: "unknown",
+      model: "unknown",
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      costUsd: 0,
+      latencyMs: 0,
+      toolCallsCount: 0,
+      riskFlags: [],
+    },
+    toolCalls: state.toolCalls.map((call) => ({
+      name: call.name,
+      description: call.description,
+      durationMs: call.durationMs,
+      status: call.status,
+    })),
+    phases: (Object.entries(state.phaseStatuses) as Array<
+      [ControlTowerPhase, ControlTowerStatus | undefined]
+    >)
+      .filter((entry): entry is [ControlTowerPhase, ControlTowerStatus] => Boolean(entry[1]))
+      .map(([phase, status]) => ({ phase, status })),
+    result: state.result ?? {
+      title: "Pending",
+      summary: "",
+      recommendations: [],
+    },
+  };
 }
 
 function missionPromptFor(mission: MissionCard): string {

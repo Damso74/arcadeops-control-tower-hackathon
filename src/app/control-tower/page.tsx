@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 
-import { DemoMissionLauncher } from "@/components/control-tower/DemoMissionLauncher";
+import { ControlTowerExperience } from "@/components/control-tower/ControlTowerExperience";
 import type { ControlTowerModeAvailability } from "@/lib/control-tower/types";
 
 export const metadata: Metadata = {
-  title: "ArcadeOps Control Tower",
-  description: "Mission control for autonomous AI agents.",
+  title: "ArcadeOps Control Tower — Flight recorder for AI agents",
+  description:
+    "Replay an autonomous AI agent run, let Gemini judge production readiness, and get a risk-aware remediation plan.",
 };
 
-// Server-side detection of the live backend availability — keeps the browser
-// out of the configuration loop entirely (no token leakage, no client probe).
+// Server-side detection of the live ArcadeOps backend availability — keeps
+// the browser out of the configuration loop entirely (no token leakage,
+// no client probe). Gemini availability is detected at runtime via
+// /api/capabilities so a key added post-deploy enables the judge without a
+// rebuild.
 function detectModeAvailability(): ControlTowerModeAvailability {
   const baseUrl = process.env.ARCADEOPS_API_BASE_URL;
   const token = process.env.ARCADEOPS_DEMO_TOKEN;
@@ -21,13 +25,12 @@ function detectModeAvailability(): ControlTowerModeAvailability {
 export default function ControlTowerPage() {
   const availability = detectModeAvailability();
 
-  const heroDescription = availability.live
-    ? "From mission to audit trail in 90 seconds. Replay the deterministic demo run for reliable judging, or run a live mission against a sandboxed ArcadeOps backend with streamed phases, tool calls, observability metrics and a production-readiness report."
-    : "From mission to audit trail in 90 seconds. A deterministic replay of an autonomous AI agent workflow — streamed phases, tool calls, observability metrics and a production-readiness report.";
+  const heroDescription =
+    "ArcadeOps Control Tower is the flight recorder and reliability judge for autonomous AI agents. Replay every run — plan, tools, cost, risks and final output — then let Gemini decide whether the run is production-ready.";
 
   const footerNote = availability.live
-    ? "Replay mode is deterministic and runs without any API key. Live mode proxies a sandboxed ArcadeOps demo endpoint — the bearer token never reaches your browser. Built for AI Agent Olympics · Lablab.ai · Milan AI Week 2026."
-    : "Deterministic replay mode runs without any API key — replays produce identical traces, useful for video and audit reproducibility. Built for AI Agent Olympics · Lablab.ai · Milan AI Week 2026.";
+    ? "Replay mode is deterministic and runs without any API key. The Gemini Reliability Judge activates whenever GEMINI_API_KEY is configured. Live ArcadeOps mode proxies a sandboxed backend — the bearer token never reaches your browser. Built for AI Agent Olympics · Lablab.ai · Milan AI Week 2026."
+    : "Deterministic replay runs without any API key — replays produce identical traces, useful for video and audit reproducibility. The Gemini Reliability Judge activates whenever GEMINI_API_KEY is configured on the deployment. Built for AI Agent Olympics · Lablab.ai · Milan AI Week 2026.";
 
   return (
     <div className="min-h-dvh bg-zinc-950 text-zinc-100">
@@ -41,13 +44,13 @@ export default function ControlTowerPage() {
             ArcadeOps Control Tower
           </h1>
           <p className="text-lg text-zinc-300">
-            Mission control for autonomous AI agents.
+            The flight recorder and Gemini-powered reliability judge for autonomous AI agents.
           </p>
           <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">{heroDescription}</p>
         </header>
 
-        {/* Launcher */}
-        <DemoMissionLauncher liveAvailable={availability.live} />
+        {/* Replay launcher + Gemini judge */}
+        <ControlTowerExperience liveAvailable={availability.live} />
 
         {/* Footer note */}
         <footer className="border-t border-white/10 pt-6 text-xs text-zinc-500">

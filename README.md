@@ -1,63 +1,160 @@
 # ArcadeOps Control Tower
 
-> **Mission control for autonomous AI agents.**
-> The cockpit to deploy, observe and audit autonomous AI agents in production.
+> **The flight recorder and Gemini-powered reliability judge for
+> autonomous AI agents.**
+>
+> Replay an agent run, let Gemini judge production readiness, and get a
+> risk-aware remediation plan.
 
 Built for **AI Agent Olympics** · Lablab.ai · Milan AI Week 2026.
 
-This repository is the **public hackathon demo** of ArcadeOps Control Tower.
-It is intentionally focused, reproducible, MIT-licensed, and contains no
-secrets or private platform code. The full ArcadeOps platform — live agent
-execution, persistence, multi-provider routing, governance, billing — is
-maintained separately.
+| Link        | URL                                                                |
+| ----------- | ------------------------------------------------------------------ |
+| Live demo   | _<paste Vercel URL>_                                               |
+| Source      | this repository (MIT)                                              |
+| Video (MP4) | _<placeholder — see [`docs/VIDEO_SCRIPT.md`](docs/VIDEO_SCRIPT.md)>_ |
+| Slides (PDF)| _<placeholder — see [`docs/DECK_OUTLINE.md`](docs/DECK_OUTLINE.md)>_|
 
 ---
 
-## What this demo shows
+## 1. Why
 
-A single page, `/control-tower`, that turns an autonomous agent run into a
-live audit trail. From mission to verdict in **90 seconds**:
+Companies are starting to deploy autonomous AI agents in production.
+The hard problem is no longer building agents — it's deciding when a
+run is actually safe to ship. Today, every run is a black box: plans,
+tool calls, costs, risks and outputs are scattered across providers
+and dashboards. Teams ship on faith.
 
-1. **Mission** — pick one of three pre-canned audit missions.
-2. **Plan** — analyze → plan → execute → evaluate → summarize phases stream
-   in with status pills.
-3. **Execution** — every tool call appears as a card with status, duration
-   and description. The full execution timeline streams via SSE.
-4. **Observability** — provider, model, token usage, cost, latency, tool
-   calls and risk flags.
-5. **Result** — production-readiness report with concrete recommendations.
+**ArcadeOps Control Tower** turns every autonomous agent run into an
+auditable trace, then asks **Google Gemini** to act as a reliability
+judge over that trace.
 
----
+## 2. What it does
 
-## Two modes
+Three layers, one screen:
 
-The demo ships with two adapters that share the same Control Tower event
-model (`src/lib/control-tower/types.ts`):
+1. **Replay layer** — a deterministic SSE stream replays a recorded
+   agent trace: phases, tool calls with status and duration, observability
+   metrics (tokens, cost USD, latency, provider/model), risk flags and
+   the final report. **No API key required.** Identical traces on every
+   run, by design — perfect for video and judging.
+2. **Gemini Reliability Judge** — when `GEMINI_API_KEY` is configured,
+   Gemini reads the trace and returns a strict JSON verdict: a readiness
+   score (0–100), a verdict (ready / needs_review / blocked), typed
+   risks with evidence, cost / tool-safety / observability assessments,
+   missing evidence, a numbered remediation plan, an executive
+   decision and a business-value paragraph.
+3. **Deployment layer** — public demo on Vercel today; the same
+   standalone Next.js bundle ships in a multi-stage Dockerfile that
+   runs on Vultr VPS, Vultr Container Registry or Vultr Kubernetes.
+   See [`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
 
-### 1. Replay mode — _default, deterministic, no API key_
+## 3. Demo flow
 
-Path: `/api/replay`
+> From mission to verdict in under two minutes.
 
-A baked-in fixture (`src/data/demo-run.json`) is streamed back as Control
-Tower SSE events. This mode is reliable for video recordings, jury demos,
-and incognito tests — no LLM, no network, no quota.
+1. Open `/control-tower`.
+2. Pick one of three pre-canned agent run traces.
+3. Click **Replay an agent run**. Phases pop in, tool calls stream
+   with statuses + ms, observability metrics fill in, the final
+   report appears.
+4. Click **Run Gemini reliability judge**. Gemini reads the trace
+   server-side and returns a typed verdict — score, risks, missing
+   evidence, remediation plan.
+5. Re-run, change missions, or inspect the JSON contract — every
+   run is fully reproducible.
 
-### 2. Live ArcadeOps backend mode — _optional, real execution_
+## 4. Google Gemini Reliability Judge
 
-Path: `/api/arcadeops/run` (server-side proxy)
+This is the differentiator versus a generic "agent demo".
 
-When configured, the proxy calls the ArcadeOps demo endpoint
-`/api/v1/control-tower/demo/run` with a server-side bearer token, normalizes
-the upstream events into the Control Tower model, and streams them to the
-client. The token never reaches the browser.
+- Endpoint: [`src/app/api/gemini/judge/route.ts`](src/app/api/gemini/judge/route.ts)
+  (Node.js runtime, `maxDuration: 60`, hard 30-second client timeout).
+- Model: defaults to **`gemini-2.5-flash`** (fast, cheap, returns valid
+  JSON consistently). Override with `GEMINI_MODEL`.
+- Request: a typed `JudgeRunSnapshot` projected from the visible run
+  state — mission prompt, phases, tool calls, observability metrics,
+  risk flags, final result. **No orgId, userId, taskId, agentId, secrets
+  or internal IDs are ever sent.**
+- Output: a strict JSON object validated by
+  [`src/lib/control-tower/gemini-types.ts`](src/lib/control-tower/gemini-types.ts).
+  Off-spec responses are normalized; unparseable responses surface a
+  clean error to the UI.
+- Failure modes are explicit:
+  - missing key → 503 `GEMINI_NOT_CONFIGURED` (panel hidden in UI),
+  - upstream HTTP error → 502 `GEMINI_REQUEST_FAILED`,
+  - unparseable JSON → 502 `GEMINI_INVALID_RESPONSE`.
 
-If any of the three env vars below is missing, the UI shows
-**"Live backend not configured in this deployment"** and silently disables
-the Live button — the Replay button keeps working.
+The Gemini API key never reaches the browser. The
+[`/api/capabilities`](src/app/api/capabilities/route.ts) endpoint
+returns only booleans + the public model name so the UI can decide
+**at runtime** whether to show the judge panel — no rebuild needed
+when the key is added or rotated.
 
----
+## 5. Replay vs live
 
-## Running locally
+| Layer                        | Replay mode  | Gemini Judge mode                    |
+| ---------------------------- | ------------ | ------------------------------------ |
+| Mission selection            | Real         | Real                                 |
+| SSE streaming protocol       | Real         | Real                                 |
+| Phase / tool call timeline   | Sanitized recorded trace | Same trace, used as evidence |
+| LLM execution                | Replayed     | Real Gemini call (live verdict)      |
+| Token usage / cost           | From trace   | From trace                           |
+| Risk flags / recommendations | From trace   | From trace                           |
+| Production-readiness verdict | —            | **Real Gemini reasoning, live**      |
+
+The replay fixture (`src/data/demo-run.json`) can be regenerated from
+a sanitized real ArcadeOps agent trace using the private export script
+([`scripts/export-control-tower-trace.ts`](https://example.invalid)
+in the private repo). The public fixture is safe, deterministic and
+contains no secrets, no orgIds, no userIds, no client names.
+
+> The full ArcadeOps platform supports live agent execution, persistent
+> tools, multi-provider LLM routing and observability. The hackathon
+> demo only exposes a focused, sandboxed subset and **disables the
+> live backend adapter publicly for safety**.
+
+## 6. Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Browser — /control-tower                                            │
+│  ├─ ControlTowerExperience (client)                                  │
+│  │   ├─ DemoMissionLauncher (Replay) ─────► /api/replay     (SSE)    │
+│  │   └─ GeminiJudgePanel ─────────────────► /api/gemini/judge (POST) │
+│  │                          /api/capabilities (GET, runtime probe)   │
+│  └─ ResultCard / ObservabilityPanel / ToolCallCard …                 │
+└────────────────────────┬─────────────────────────────────────────────┘
+                         │
+        ┌────────────────┴────────────────┬────────────────────┐
+        │                                 │                    │
+   Replay mode                       Gemini Judge          Live ArcadeOps
+        │                                 │                    │
+GET /api/replay (SSE)            POST /api/gemini/judge   POST /api/arcadeops/run
+        │                                 │                    │
+src/data/demo-run.json           Google Gemini API        ArcadeOps backend
+                                 (server-side only)       (server proxy, off in
+                                                           public deployment)
+```
+
+All adapters emit the same Control Tower event model
+(`src/lib/control-tower/types.ts`): `phase_change`, `step`, `tool_call`,
+`token`, `observability`, `result`, `done`, `error`, `heartbeat`.
+
+## 7. Vultr-ready deployment
+
+This repo ships a multi-stage Dockerfile and a `/api/health` endpoint so
+the same image runs on Vultr in three flavors:
+
+- single-VPS Docker run,
+- Vultr Container Registry + plain Docker host,
+- Vultr Kubernetes Engine deployment.
+
+Replay works with **zero env vars**. The Gemini Reliability Judge
+activates with a single env var. Full guide:
+[`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
+
+## 8. Run locally
 
 Requires Node 20+ and npm.
 
@@ -67,69 +164,73 @@ npm run dev
 # Open http://localhost:3000/control-tower
 ```
 
-That's it for replay mode. Click **▶ Replay demo mission** and the SSE
+That's it for replay mode. Click **▶ Replay an agent run** and the SSE
 stream populates phases, tool calls, observability and the final report.
 
-### Enabling Live ArcadeOps mode
+## 9. Configure Gemini
 
 Create `.env.local` (never committed) at the repo root:
 
 ```env
-ARCADEOPS_API_BASE_URL=https://your-arcadeops-deployment.example.com
-ARCADEOPS_DEMO_TOKEN=replace-with-the-server-side-demo-token
-ARCADEOPS_DEMO_AGENT_ID=replace-with-the-demo-agent-id
+GEMINI_API_KEY=your-google-ai-studio-key
+# Optional — defaults to gemini-2.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Then restart `npm run dev`. The **⚡ Run live with ArcadeOps backend**
-button activates and routes through the server-side proxy.
+Get a key here: https://aistudio.google.com/app/apikey
 
-The token is read by `src/app/api/arcadeops/run/route.ts` on the server.
-The browser only sees the proxy URL.
+Restart `npm run dev`. The **Run Gemini reliability judge** button is
+enabled automatically — no rebuild needed (capabilities are detected at
+runtime).
 
----
+For Vercel: add `GEMINI_API_KEY` in Project Settings → Environment
+Variables for **Production + Preview + Development**, then redeploy
+once. The capabilities endpoint will pick up the change on the next
+function invocation.
 
-## What is real, what is replay
+## 10. Security
 
-| Layer                        | Replay mode  | Live mode          |
-| ---------------------------- | ------------ | ------------------ |
-| Mission selection            | Real         | Real               |
-| SSE streaming protocol       | Real         | Real               |
-| Phase / tool call timeline   | Fixture      | Real (normalized)  |
-| LLM execution                | Fixture      | Real ArcadeOps run |
-| Token usage / cost           | Fixture      | Real (from run)    |
-| Risk flags / report          | Fixture      | Real (from run)    |
+- **No secrets in the repo.** The `.gitignore` blocks `.env`, `.env.*`
+  and any local override; only `.env.example` is tracked.
+- **Server-side keys only.** `GEMINI_API_KEY` is read by
+  `/api/gemini/judge` and never serialized into a response or sent to
+  the browser. Same for the optional `ARCADEOPS_DEMO_TOKEN` used by the
+  live proxy.
+- **Sanitized public trace.** `src/data/demo-run.json` contains no
+  orgId, userId, taskId, agentId, email, internal URL, client name or
+  memory key. The export script in the private ArcadeOps repo enforces
+  these guarantees.
+- **Defensive judge route.** Unknown JSON fields in client requests are
+  dropped, payloads are size-clamped, the upstream call has a hard 30 s
+  timeout, and the `/api/gemini/judge` failure modes never leak the
+  upstream key or URL fragments.
+- **Hidden live backend.** The public deployment leaves the three
+  `ARCADEOPS_*` env vars empty, which silently disables the Live
+  ArcadeOps button. The adapter has been tested end-to-end locally but
+  never points at the production ArcadeOps platform from a public host.
 
-The full ArcadeOps platform supports live agent execution, tools,
-persistence, multi-provider LLM routing and observability. The hackathon
-demo only exposes a focused, sandboxed subset of that platform.
+## 11. Limitations
 
----
+- The Gemini judge is a **second opinion**, not ground truth. Use it
+  to surface risks and missing evidence — not as a sign-off mechanism.
+- The replay fixture is a single recorded run. The full ArcadeOps
+  platform supports live multi-agent orchestration, persistent tools,
+  multi-provider routing and governance — none of that ships in the
+  public demo.
+- No test runner is wired in (V1) — verification is manual:
+  - `/control-tower` loads with no console errors.
+  - Replay completes on a `done` event.
+  - Without `GEMINI_API_KEY` the judge panel is hidden / discreet.
+  - With `GEMINI_API_KEY` a verdict returns in < 15 s.
 
-## Architecture
+## 12. Hackathon submission
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  Browser — /control-tower                                            │
-│  └─ DemoMissionLauncher  (subscribeToControlTower → ControlTowerEvent)│
-└────────────────────────┬─────────────────────────────────────────────┘
-                         │
-        ┌────────────────┴───────────────────┐
-        │                                    │
-   Replay mode                          Live mode
-        │                                    │
-GET /api/replay (SSE)             POST /api/arcadeops/run (SSE proxy)
-        │                                    │
-src/data/demo-run.json            ┌──────────┴──────────┐
-                                  │ ArcadeOps backend   │
-                                  │ POST /api/v1/       │
-                                  │   control-tower/    │
-                                  │   demo/run          │
-                                  └─────────────────────┘
-```
-
-All adapters emit the same `ControlTowerEvent` shape:
-`phase_change`, `step`, `tool_call`, `token`, `observability`, `result`,
-`done`, `error`, `heartbeat`.
+- Submission copy: [`docs/SUBMISSION_COPY.md`](docs/SUBMISSION_COPY.md)
+- Video script (3 min): [`docs/VIDEO_SCRIPT.md`](docs/VIDEO_SCRIPT.md)
+- Deck outline (8 slides): [`docs/DECK_OUTLINE.md`](docs/DECK_OUTLINE.md)
+- Build-in-public posts: [`docs/BUILD_IN_PUBLIC.md`](docs/BUILD_IN_PUBLIC.md)
+- Vultr deployment: [`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md)
+- Original V0 spec: [`docs/DEMO_SPEC.md`](docs/DEMO_SPEC.md)
 
 ---
 
@@ -140,55 +241,19 @@ All adapters emit the same `ControlTowerEvent` shape:
 - **Tailwind CSS 4** (zero-config via `@tailwindcss/postcss`)
 - **TypeScript** strict
 - Native `fetch` + `ReadableStream` for SSE on both server and client
+- **Google Gemini** via REST (`generativelanguage.googleapis.com/v1beta`,
+  no SDK dependency)
+- **Docker** multi-stage build → Next.js standalone bundle
 
-No database, no auth, no billing, no secrets.
-
----
-
-## Repo layout
-
-```
-src/
-├─ app/
-│  ├─ page.tsx                      # Landing — links into /control-tower
-│  ├─ control-tower/page.tsx        # Main demo page
-│  └─ api/
-│     ├─ replay/route.ts            # Replay SSE endpoint
-│     └─ arcadeops/run/route.ts     # Live ArcadeOps backend proxy (SSE)
-├─ components/control-tower/        # UI primitives
-├─ lib/control-tower/
-│  ├─ types.ts                      # Canonical event model
-│  ├─ sse.ts                        # SSE parse + subscribe helper
-│  └─ normalizers.ts                # ArcadeOps → Control Tower mapping
-└─ data/demo-run.json               # Replay fixture
-```
-
----
+No database, no auth, no billing. The only state is the SSE stream.
 
 ## Quality gates
 
 ```bash
 npm run lint      # ESLint (eslint-config-next)
-npm run build     # Production build
+npm run build     # Production build (no key required)
 ```
-
-The repo has no test runner wired in for V0 — verification is manual:
-
-- `/control-tower` loads with no console errors.
-- Clicking **Replay demo mission** streams events and ends on a `done`.
-- Without env vars, the **Run live** button is visibly disabled.
-- `npm run build` produces no warnings.
-
----
 
 ## License
 
 MIT — see `LICENSE`. Use it, fork it, learn from it.
-
----
-
-## Links
-
-- ArcadeOps platform overview: _coming soon_
-- Hackathon submission: _to be filled in once Lablab submission is live_
-- Demo video: _to be filled in_
