@@ -73,11 +73,21 @@
 - The **decision card** fills in immediately, decision-first:
   - score dial — typically **5–20 / 100**,
   - verdict pill: **BLOCKED — DO NOT SHIP**,
+  - small red **Policy gate: destructive action without approval** badge
+    next to the verdict pill,
   - one-line **Reason** (destructive CRM deletion + outbound emails
     without approval),
   - one-line **Next action** (add approval gates, replay IDs, audit
     logs and cost limits before re-scoring).
-- Caption: _"Powered by Gemini — server-side reliability judge."_
+- Caption: _"Powered by Gemini — server-side reliability judge.
+  ArcadeOps enforces non-negotiable production gates."_
+
+**Voiceover detail:**
+
+> "Even if the model summarizes the run, ArcadeOps enforces hard
+> production gates: destructive actions without approval cannot ship.
+> Gemini provided the audit. ArcadeOps applied non-negotiable
+> production rules on top."
 
 ---
 

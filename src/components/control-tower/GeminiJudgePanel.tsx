@@ -7,6 +7,7 @@ import {
   FileWarning,
   ListChecks,
   OctagonX,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Wrench,
@@ -273,6 +274,59 @@ export function JudgeResultView({
 
   const detailSections = (
     <>
+      {/* Production policy gate details — only when triggered. */}
+      {result.policyGate?.triggered && result.policyGate.rules.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <SectionTitle>ArcadeOps production gates</SectionTitle>
+          <Disclosure
+            label={`${result.policyGate.rules.length} non-negotiable rule${
+              result.policyGate.rules.length === 1 ? "" : "s"
+            } triggered`}
+            hint="Server-enforced"
+            variant="card"
+          >
+            <ul className="flex flex-col gap-2">
+              {result.policyGate.rules.map((rule) => (
+                <li
+                  key={rule.id}
+                  className={`rounded-md border p-3 ${
+                    rule.severity === "high"
+                      ? "border-red-400/30 bg-red-400/[0.06]"
+                      : "border-amber-400/30 bg-amber-400/[0.06]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert
+                      className={`h-3.5 w-3.5 flex-none ${
+                        rule.severity === "high"
+                          ? "text-red-300"
+                          : "text-amber-300"
+                      }`}
+                      aria-hidden
+                    />
+                    <span className="text-sm font-semibold text-zinc-100">
+                      {rule.label}
+                    </span>
+                    <span
+                      className={`ml-auto text-[10px] font-semibold uppercase tracking-wider ${
+                        rule.severity === "high"
+                          ? "text-red-300"
+                          : "text-amber-300"
+                      }`}
+                    >
+                      {rule.severity}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-300">
+                    {rule.reason}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </Disclosure>
+        </section>
+      ) : null}
+
       {/* Top risks — decision-first */}
       {topRisks.length > 0 ? (
         <section className="flex flex-col gap-3">
@@ -436,6 +490,8 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
   const Icon = meta.Icon;
   const reason = firstSentence(result.summary);
   const nextAction = firstSentence(result.executiveDecision);
+  const policyGate = result.policyGate;
+  const firstRule = policyGate?.rules?.[0];
 
   return (
     <article
@@ -448,12 +504,21 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
       <div className="grid items-center gap-5 sm:grid-cols-[auto_1fr]">
         <ScoreDial score={result.readinessScore} verdict={result.verdict} />
         <div className="flex flex-col gap-3">
-          <span
-            className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${meta.classes}`}
-          >
-            <Icon className="h-3.5 w-3.5" aria-hidden />
-            {meta.label}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${meta.classes}`}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden />
+              {meta.label}
+            </span>
+            {policyGate?.triggered && firstRule ? (
+              <PolicyGateBadge
+                label={firstRule.label}
+                severity={firstRule.severity}
+                extraCount={Math.max(0, policyGate.rules.length - 1)}
+              />
+            ) : null}
+          </div>
 
           {reason ? (
             <div className="flex flex-col gap-1">
@@ -474,9 +539,46 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
               </p>
             </div>
           ) : null}
+
+          {policyGate?.triggered && policyGate.rules.length > 0 ? (
+            <p className="text-[11px] leading-relaxed text-zinc-500">
+              Gemini provided the audit. ArcadeOps applied non-negotiable
+              production gates.
+            </p>
+          ) : null}
         </div>
       </div>
     </article>
+  );
+}
+
+function PolicyGateBadge({
+  label,
+  severity,
+  extraCount,
+}: {
+  label: string;
+  severity: "medium" | "high";
+  extraCount: number;
+}) {
+  const tone =
+    severity === "high"
+      ? "border-red-400/40 bg-red-500/15 text-red-100"
+      : "border-amber-400/40 bg-amber-500/15 text-amber-100";
+  return (
+    <span
+      role="status"
+      aria-label={`Production policy gate triggered: ${label}`}
+      className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${tone}`}
+    >
+      <ShieldAlert className="h-3 w-3 flex-none" aria-hidden />
+      <span className="truncate">Policy gate: {label}</span>
+      {extraCount > 0 ? (
+        <span className="ml-0.5 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-mono normal-case tracking-normal text-zinc-200">
+          +{extraCount}
+        </span>
+      ) : null}
+    </span>
   );
 }
 

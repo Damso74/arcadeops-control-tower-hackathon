@@ -120,6 +120,37 @@ returns only booleans + the public model name so the UI can decide
 **at runtime** whether to show the judge panel — no rebuild needed
 when the key is added or rotated.
 
+### 4.1. Deterministic production policy gates
+
+ArcadeOps combines **Gemini reasoning with deterministic production
+policy gates**. Gemini audits the trace and explains risks; ArcadeOps
+applies non-negotiable rules on top of the model verdict, so a
+manifestly unsafe run can never silently be marked READY.
+
+The gates live in
+[`src/lib/control-tower/policy-gates.ts`](src/lib/control-tower/policy-gates.ts)
+(pure TypeScript, no I/O) and are applied server-side in the judge
+route after `normalizeJudgeResult`. Today's rules:
+
+| Rule | Severity | Effect on verdict |
+|---|---|---|
+| Destructive action attempted without human approval | high | caps verdict at `blocked`, score ≤ 45 |
+| Outbound customer message attempted without review | high | caps verdict at `blocked`, score ≤ 45 |
+| Write actions without replay or audit evidence | high | caps verdict at `needs_review`, score ≤ 70 |
+| Cost budget exceeded or unbounded | medium | caps verdict at `needs_review`, score ≤ 75 |
+
+The gates only **tighten** the verdict — they never relax it, never
+overwrite Gemini's prose, and only append a risk if Gemini did not
+already flag the same concern. In `remediation_simulation` mode, a
+rule is *covered* (and does not fire) when the user-selected
+guardrails clearly address it (e.g. "Require human approval for
+destructive tools" covers the destructive-without-approval rule).
+
+The decision card surfaces a short `Policy gate: …` badge whenever a
+rule fires, plus a disclosure listing the full set of triggered
+rules — making it explicit that *Gemini provided the audit; ArcadeOps
+applied non-negotiable production gates*.
+
 ## 5. Replay vs live
 
 | Layer                        | Replay mode  | Gemini Judge mode                    |

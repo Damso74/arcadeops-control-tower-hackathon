@@ -7,6 +7,7 @@ import {
   type JudgeRequestBody,
   type JudgeRunSnapshot,
 } from "@/lib/control-tower/gemini-types";
+import { applyProductionPolicyGates } from "@/lib/control-tower/policy-gates";
 import {
   findScenarioById,
   GUARDRAIL_CATALOG,
@@ -142,11 +143,17 @@ export async function POST(req: Request): Promise<Response> {
 
   let prompt: string;
   let snapshot: JudgeRunSnapshot;
+  let resolvedScenarioId: string | undefined;
+  let resolvedTraceText: string;
+  let resolvedGuardrails: string[];
 
   try {
     const built = buildPromptForMode(mode, body);
     prompt = built.prompt;
     snapshot = built.snapshot;
+    resolvedScenarioId = built.scenarioId;
+    resolvedTraceText = built.traceText;
+    resolvedGuardrails = built.guardrails;
   } catch (err) {
     return jsonError(400, {
       ok: false,
@@ -258,9 +265,21 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
+  // ── 5. Apply deterministic production policy gates on top of Gemini.
+  //       Gemini reasons over the trace; ArcadeOps enforces non-negotiable
+  //       production rules (destructive-without-approval,
+  //       outbound-without-review, write-without-audit, cost overrun).
+  const gated = applyProductionPolicyGates({
+    result,
+    mode,
+    scenarioId: resolvedScenarioId,
+    traceText: resolvedTraceText,
+    guardrails: resolvedGuardrails,
+  });
+
   const successPayload: { ok: true; result: GeminiJudgeResult; mode: JudgeMode } = {
     ok: true,
-    result,
+    result: gated.result,
     mode,
   };
 
@@ -311,6 +330,20 @@ function sanitizeModelName(raw: string | undefined): string | null {
 interface BuiltPrompt {
   prompt: string;
   snapshot: JudgeRunSnapshot;
+  /**
+   * Resolved scenario id for the policy gate. Set when the call is in
+   * `scenario_trace` mode or when a `remediation_simulation` references
+   * a known scenario.
+   */
+  scenarioId?: string;
+  /**
+   * Resolved trace text for the policy gate. The string can be quite
+   * long (~12 000 chars for pasted traces), so we never log it — we
+   * only feed it into the deterministic substring detection.
+   */
+  traceText: string;
+  /** Sanitized guardrails — drives the remediation_simulation coverage. */
+  guardrails: string[];
 }
 
 /**
@@ -329,6 +362,9 @@ function buildPromptForMode(mode: JudgeMode, body: JudgeRequestBody): BuiltPromp
     return {
       snapshot: scenario.snapshot,
       prompt: buildScenarioPrompt(scenario, guardrails, /*remediation*/ false),
+      scenarioId: scenario.id,
+      traceText: scenario.traceText,
+      guardrails,
     };
   }
 
@@ -341,6 +377,8 @@ function buildPromptForMode(mode: JudgeMode, body: JudgeRequestBody): BuiltPromp
     return {
       snapshot,
       prompt: buildPastedTracePrompt(cleaned, guardrails, /*remediation*/ false),
+      traceText: cleaned,
+      guardrails,
     };
   }
 
@@ -356,6 +394,9 @@ function buildPromptForMode(mode: JudgeMode, body: JudgeRequestBody): BuiltPromp
       return {
         snapshot: scenario.snapshot,
         prompt: buildScenarioPrompt(scenario, guardrails, /*remediation*/ true),
+        scenarioId: scenario.id,
+        traceText: scenario.traceText,
+        guardrails,
       };
     }
     const sanitized = sanitizeSnapshot(body.runSnapshot);
@@ -368,6 +409,8 @@ function buildPromptForMode(mode: JudgeMode, body: JudgeRequestBody): BuiltPromp
           guardrails,
           /*remediation*/ true,
         ),
+        traceText: snapshotToTraceText(sanitized),
+        guardrails,
       };
     }
     const cleaned = sanitizePastedTrace(body.traceText);
@@ -376,6 +419,8 @@ function buildPromptForMode(mode: JudgeMode, body: JudgeRequestBody): BuiltPromp
       return {
         snapshot: snap,
         prompt: buildPastedTracePrompt(cleaned, guardrails, /*remediation*/ true),
+        traceText: cleaned,
+        guardrails,
       };
     }
     throw new Error(
@@ -393,7 +438,32 @@ function buildPromptForMode(mode: JudgeMode, body: JudgeRequestBody): BuiltPromp
       guardrails,
       /*remediation*/ false,
     ),
+    traceText: snapshotToTraceText(snapshot),
+    guardrails,
   };
+}
+
+/**
+ * Project a `JudgeRunSnapshot` into a flat haystack that the deterministic
+ * policy gate can grep. We deliberately keep this lossy and short — the
+ * gate only needs enough surface to detect destructive / outbound /
+ * write-without-audit / cost-overrun keywords.
+ */
+function snapshotToTraceText(snapshot: JudgeRunSnapshot): string {
+  const lines: string[] = [
+    snapshot.mission.title,
+    snapshot.mission.prompt ?? "",
+    snapshot.result.title,
+    snapshot.result.summary,
+    ...snapshot.result.recommendations,
+    ...snapshot.observability.riskFlags,
+  ];
+  for (const tc of snapshot.toolCalls) {
+    lines.push(tc.name);
+    if (tc.description) lines.push(tc.description);
+    lines.push(tc.status);
+  }
+  return lines.filter((l) => typeof l === "string" && l.length > 0).join("\n");
 }
 
 /** Snapshot from the bundled deterministic fixture. */

@@ -67,6 +67,13 @@ The hackathon demo is structured as three layers:
    simulation. The before/after readiness comparison is the wow moment
    of the demo: a critical run can move from BLOCKED to READY WITH
    MONITORING — or stay BLOCKED if Gemini still finds residual risk.
+
+   The demo combines Gemini's reasoning with **deterministic production
+   policy gates**: destructive actions without approval, outbound
+   customer messages without review, and write actions without
+   replay/audit evidence cannot be marked production-ready, even if a
+   model summarizes the run. Gemini provides the audit; ArcadeOps
+   enforces the non-negotiable rules.
 3. **Deployment layer.** Public demo on Vercel. Dockerfile + `/api/health`
    + standalone Next.js bundle make the same image trivially deployable
    to **Vultr** (VPS, Container Registry, or Vultr Kubernetes Engine).

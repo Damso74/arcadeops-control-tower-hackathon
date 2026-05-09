@@ -44,6 +44,24 @@ export interface GeminiJudgeResult {
   remediationPlan: string[];
   executiveDecision: string;
   businessValue: string;
+  /**
+   * Optional deterministic production policy gate result. Attached by the
+   * server route after `normalizeJudgeResult`. Gemini reasons over the
+   * trace; ArcadeOps applies non-negotiable production rules on top of
+   * the verdict (destructive-without-approval, outbound-without-review,
+   * write-without-audit, unbounded-cost). When `triggered === true` the
+   * UI shows a discreet badge in the decision card explaining that a
+   * hard production rule fired in addition to the model verdict.
+   */
+  policyGate?: {
+    triggered: boolean;
+    rules: Array<{
+      id: string;
+      label: string;
+      severity: "medium" | "high";
+      reason: string;
+    }>;
+  };
 }
 
 const VALID_VERDICTS: ReadonlySet<GeminiVerdict> = new Set([
