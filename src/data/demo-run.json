@@ -84,7 +84,7 @@
     {
       "type": "tool_call",
       "name": "browse_url",
-      "description": "Fetches https://arcadeops.dev/runbooks/agent-readiness for canonical guidance.",
+      "description": "Loads the agent readiness checklist and safety runbook.",
       "status": "running",
       "delayMs": 250
     },
