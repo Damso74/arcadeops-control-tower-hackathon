@@ -2,15 +2,19 @@
 
 import {
   AlertTriangle,
+  Check,
+  ClipboardCopy,
   DollarSign,
   Eye,
   FileWarning,
   ListChecks,
   OctagonX,
+  Radio,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   Wrench,
+  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -148,17 +152,24 @@ export function GeminiJudgePanel({
   if (!available) {
     return (
       <aside
-        aria-label="Gemini reliability judge availability"
-        className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-xs text-zinc-500"
+        aria-label="Gemini reliability agent availability"
+        className="flex flex-col gap-2 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-xs text-zinc-500"
       >
-        <span className="font-medium text-zinc-400">
-          Gemini reliability judge
-        </span>{" "}
-        is available when configured. The page works fully without it — set{" "}
-        <code className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-zinc-300">
-          GEMINI_API_KEY
-        </code>{" "}
-        to enable a live production-readiness verdict on every run.
+        <div>
+          <JudgeModeBadge live={false} />
+        </div>
+        <div>
+          <span className="font-medium text-zinc-400">
+            Gemini Reliability Agent
+          </span>{" "}
+          is available when configured. The page works fully without it — set{" "}
+          <code className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-zinc-300">
+            GEMINI_API_KEY
+          </code>{" "}
+          to enable a live production-readiness verdict on every run. Until
+          then, deterministic replay drives the timeline so the demo stays
+          reproducible.
+        </div>
       </aside>
     );
   }
@@ -168,16 +179,17 @@ export function GeminiJudgePanel({
 
   return (
     <section
-      aria-label="Gemini reliability judge"
+      aria-label="Gemini reliability agent"
       className="flex flex-col gap-5 rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/[0.06] via-white/[0.02] to-blue-500/[0.06] p-6"
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
               <Sparkles className="h-3 w-3" aria-hidden />
               Powered by Gemini
             </span>
+            <JudgeModeBadge live />
             {model ? (
               <span className="font-mono text-[10px] text-zinc-500">
                 {model}
@@ -185,11 +197,19 @@ export function GeminiJudgePanel({
             ) : null}
           </div>
           <h3 className="text-lg font-semibold text-zinc-50">
-            Reliability Judge
+            Gemini Reliability Agent
           </h3>
           <p className="max-w-xl text-sm text-zinc-400">
-            Server-side Gemini reads the agent trace and decides whether the
-            run can ship to production.
+            Gemini audits the full ArcadeOps trace and applies production
+            policies — tools, sub-agents, costs, approvals and risky outputs.
+          </p>
+          <p className="max-w-xl text-[11px] leading-relaxed text-zinc-500">
+            Deterministic replay is used for the timeline so the demo is
+            reproducible. When{" "}
+            <code className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-zinc-300">
+              GEMINI_API_KEY
+            </code>{" "}
+            is configured, the same trace is audited server-side by Gemini.
           </p>
         </div>
 
@@ -201,12 +221,12 @@ export function GeminiJudgePanel({
         >
           {state.status === "loading" ? (
             <>
-              <Spinner /> Judging…
+              <Spinner /> Auditing run…
             </>
           ) : state.status === "ready" ? (
-            "Re-run Gemini judge"
+            "Re-run production gate"
           ) : (
-            actionLabel ?? "Run Gemini reliability judge"
+            actionLabel ?? "Run production gate"
           )}
         </button>
       </header>
@@ -518,6 +538,7 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
                 extraCount={Math.max(0, policyGate.rules.length - 1)}
               />
             ) : null}
+            <CopyAuditReportButton result={result} />
           </div>
 
           {reason ? (
@@ -550,6 +571,135 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
       </div>
     </article>
   );
+}
+
+/* ---------- Copy audit report ---------- */
+
+/**
+ * Small "Copy audit report" button rendered next to the verdict badge.
+ * Generates a plain-text summary of the verdict, score, top risks and
+ * recommended remediation. Useful for hackathon judges who want to drop
+ * the result into a Slack thread or a video script.
+ */
+function CopyAuditReportButton({ result }: { result: GeminiJudgeResult }) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const onClick = useCallback(async () => {
+    try {
+      const report = formatAuditReport(result);
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard?.writeText
+      ) {
+        await navigator.clipboard.writeText(report);
+      } else {
+        // Fallback: surface the text in a hidden textarea + execCommand.
+        // navigator.clipboard is missing on some legacy browsers.
+        const ta = document.createElement("textarea");
+        ta.value = report;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Swallow — the worst case is the user not getting confirmation.
+      // We deliberately do not surface a toast for a copy failure.
+    }
+  }, [result]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => void onClick()}
+      aria-label="Copy audit report to clipboard"
+      className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:border-white/30 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3" aria-hidden />
+          Audit report copied.
+        </>
+      ) : (
+        <>
+          <ClipboardCopy className="h-3 w-3" aria-hidden />
+          Copy audit report
+        </>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Build the plain-text audit report copied by `CopyAuditReportButton`.
+ * Exported so the same function can be reused in tests or in a future
+ * "share via email" CTA. Pure (no I/O, no DOM).
+ */
+export function formatAuditReport(result: GeminiJudgeResult): string {
+  const verdictLabel: Record<GeminiVerdict, string> = {
+    ready: "READY",
+    needs_review: "NEEDS REVIEW",
+    blocked: "BLOCKED",
+  };
+  const lines: string[] = [];
+  lines.push("ArcadeOps Control Tower Audit");
+  lines.push("");
+  lines.push(`Verdict: ${verdictLabel[result.verdict]}`);
+  lines.push(`Readiness: ${result.readinessScore}/100`);
+  if (result.executiveDecision) {
+    lines.push(`Next action: ${result.executiveDecision.trim()}`);
+  }
+  lines.push("");
+
+  if (result.policyGate?.triggered && result.policyGate.rules.length > 0) {
+    lines.push("Production gates triggered:");
+    for (const rule of result.policyGate.rules) {
+      lines.push(`- [${rule.severity.toUpperCase()}] ${rule.label}`);
+    }
+    lines.push("");
+  }
+
+  const sortedRisks = [...result.risks].sort(
+    (a, b) => severityOrder(b.severity) - severityOrder(a.severity),
+  );
+  if (sortedRisks.length > 0) {
+    lines.push("Critical risks:");
+    for (const risk of sortedRisks.slice(0, 6)) {
+      lines.push(`- [${risk.severity.toUpperCase()}] ${risk.finding}`);
+    }
+    lines.push("");
+  }
+
+  if (result.missingEvidence.length > 0) {
+    lines.push("Missing evidence:");
+    for (const m of result.missingEvidence.slice(0, 5)) {
+      lines.push(`- ${m}`);
+    }
+    lines.push("");
+  }
+
+  if (result.remediationPlan.length > 0) {
+    lines.push("Recommended remediation:");
+    for (const step of result.remediationPlan.slice(0, 6)) {
+      lines.push(`- ${step}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("Generated by ArcadeOps Control Tower (Gemini Reliability Agent).");
+  return lines.join("\n");
 }
 
 function PolicyGateBadge({
@@ -731,6 +881,35 @@ function Spinner() {
       aria-hidden
       className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
     />
+  );
+}
+
+/**
+ * Tiny pill that surfaces, at a glance, whether the next "Run production
+ * gate" click will hit live Gemini server-side, or whether the panel is
+ * stuck on deterministic replay (no GEMINI_API_KEY). A judge should know
+ * within one second which mode is in use.
+ */
+function JudgeModeBadge({ live }: { live: boolean }) {
+  if (live) {
+    return (
+      <span
+        aria-label="Live Gemini audit mode"
+        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200"
+      >
+        <Zap className="h-3 w-3" aria-hidden />
+        Mode: Live Gemini audit
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-label="Deterministic replay mode"
+      className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-300"
+    >
+      <Radio className="h-3 w-3" aria-hidden />
+      Mode: Deterministic replay
+    </span>
   );
 }
 

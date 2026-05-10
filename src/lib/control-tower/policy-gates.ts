@@ -271,7 +271,7 @@ const RULES: readonly RuleDefinition[] = [
         "Production policy gate detected destructive write behavior without approval evidence.",
     },
     matchers: [DESTRUCTIVE_TOKENS, NO_APPROVAL_TOKENS],
-    scenarioIds: ["blocked_crm_write_agent"],
+    scenarioIds: ["blocked_crm_write_agent", "multi_agent_escalation"],
     guardrailCoverage: [
       "human approval",
       "approval gate",
@@ -295,7 +295,7 @@ const RULES: readonly RuleDefinition[] = [
         "Production policy gate detected customer-facing communication without review evidence.",
     },
     matchers: [OUTBOUND_TOKENS, NO_REVIEW_TOKENS],
-    scenarioIds: ["blocked_crm_write_agent"],
+    scenarioIds: ["blocked_crm_write_agent", "multi_agent_escalation"],
     guardrailCoverage: [
       "block outbound",
       "outbound review",
@@ -320,7 +320,7 @@ const RULES: readonly RuleDefinition[] = [
         "Production policy gate detected missing replay or audit trail for state-changing operations.",
     },
     matchers: [WRITE_ACTION_TOKENS, MISSING_AUDIT_TOKENS],
-    scenarioIds: ["blocked_crm_write_agent"],
+    scenarioIds: ["blocked_crm_write_agent", "multi_agent_escalation"],
     guardrailCoverage: [
       "audit log",
       "audit logs",

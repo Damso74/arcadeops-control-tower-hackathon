@@ -1,14 +1,15 @@
 import { ArrowRight, Gauge, ShieldAlert, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 
+import { ArcadeOpsRuntimeSection } from "@/components/control-tower/ArcadeOpsRuntimeSection";
 import { ControlTowerExperience } from "@/components/control-tower/ControlTowerExperience";
 import type { ControlTowerModeAvailability } from "@/lib/control-tower/types";
 
 export const metadata: Metadata = {
   title:
-    "ArcadeOps Control Tower — Production gate for autonomous AI agents",
+    "ArcadeOps Control Tower — A Gemini-powered production gate for autonomous AI agents",
   description:
-    "Replay or paste an AI agent trace. Gemini audits the plan, tools, cost, risks and output, then returns a production-readiness verdict.",
+    "Replay or paste an ArcadeOps agent trace. Control Tower audits tools, sub-agents, costs, approvals and risky outputs, then decides whether the run should ship, need review, or be blocked.",
 };
 
 // Server-side detection of the live ArcadeOps backend availability — keeps
@@ -37,14 +38,15 @@ export default function ControlTowerPage() {
         {/* Hero — decision-first, single fold */}
         <header className="flex flex-col gap-4">
           <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-emerald-300">
-            ArcadeOps · Production gate for autonomous AI agents
+            ArcadeOps Control Tower
           </p>
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
-            Can this AI agent run safely ship to production?
+            A Gemini-powered production gate for autonomous AI agents.
           </h1>
           <p className="max-w-3xl text-base leading-relaxed text-zinc-300 sm:text-lg">
-            Replay or paste an agent trace. Gemini audits tools, cost, risks
-            and output, then returns a production-readiness verdict.
+            Replay or paste an ArcadeOps agent trace. Control Tower audits
+            tools, sub-agents, costs, approvals and risky outputs, then decides
+            whether the run should ship, need review, or be blocked.
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -61,9 +63,9 @@ export default function ControlTowerPage() {
 
           {/* Compact one-line flow — used to be three big cards */}
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-            <FlowStep n={1}>Pick a trace</FlowStep>
+            <FlowStep n={1}>Pick a multi-agent run</FlowStep>
             <ArrowRight aria-hidden className="h-3 w-3 text-zinc-600" />
-            <FlowStep n={2}>Inspect evidence</FlowStep>
+            <FlowStep n={2}>Inspect agents, tools &amp; evidence</FlowStep>
             <ArrowRight aria-hidden className="h-3 w-3 text-zinc-600" />
             <FlowStep n={3}>
               Gemini decides:{" "}
@@ -75,6 +77,8 @@ export default function ControlTowerPage() {
         </header>
 
         <ControlTowerExperience liveAvailable={availability.live} />
+
+        <ArcadeOpsRuntimeSection />
 
         <footer className="border-t border-white/10 pt-6 text-xs text-zinc-500">
           <p>

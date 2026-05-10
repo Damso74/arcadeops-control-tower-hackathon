@@ -13,6 +13,7 @@ import {
   GUARDRAIL_CATALOG,
   type TraceScenario,
 } from "@/lib/control-tower/scenarios";
+import { enforceVerdictConsistency } from "@/lib/control-tower/verdict-consistency";
 import type { DemoRunFixture } from "@/lib/control-tower/types";
 import { checkRateLimit, clientKeyFromRequest } from "@/lib/server/rate-limit";
 
@@ -277,9 +278,16 @@ export async function POST(req: Request): Promise<Response> {
     guardrails: resolvedGuardrails,
   });
 
+  // ── 6. Enforce internal verdict / score / executiveDecision coherence.
+  //       Gates above may have tightened the verdict by rule. This pass
+  //       ensures the *triple* (verdict, readinessScore, executiveDecision)
+  //       can never visibly contradict itself in the decision card —
+  //       no "Blocked + Next action: Ship", no "Ready 25/100".
+  const coherent = enforceVerdictConsistency(gated.result);
+
   const successPayload: { ok: true; result: GeminiJudgeResult; mode: JudgeMode } = {
     ok: true,
-    result: gated.result,
+    result: coherent.result,
     mode,
   };
 

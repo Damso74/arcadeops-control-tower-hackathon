@@ -77,6 +77,9 @@ export function ScenarioEvidenceTimeline({
 
 function EvidenceCard({ entry }: { entry: ScenarioEvidence }) {
   const palette = tonePalette(entry.tone);
+  const hasMeta = Boolean(
+    entry.agent || entry.tool || entry.risk || entry.durationMs,
+  );
   return (
     <article
       className={`flex items-start gap-3 rounded-lg border ${palette.border} ${palette.bg} px-4 py-3`}
@@ -88,17 +91,75 @@ function EvidenceCard({ entry }: { entry: ScenarioEvidence }) {
         {renderEvidenceIcon(entry.kind, entry.tone)}
       </span>
       <div className="flex-1">
-        <div
-          className={`text-[10px] font-semibold uppercase tracking-wider ${palette.text}`}
-        >
-          {entry.kind}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div
+            className={`text-[10px] font-semibold uppercase tracking-wider ${palette.text}`}
+          >
+            {entry.kind}
+          </div>
+          {entry.agent ? (
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-200">
+              {entry.agent}
+            </span>
+          ) : null}
         </div>
         <p className="mt-1 text-sm leading-relaxed text-zinc-100">
           {entry.label}
         </p>
+        {hasMeta ? (
+          <dl className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+            {entry.tool ? (
+              <div className="inline-flex items-center gap-1">
+                <dt className="text-zinc-500">tool</dt>
+                <dd className="rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10.5px] text-zinc-200">
+                  {entry.tool}
+                </dd>
+              </div>
+            ) : null}
+            {entry.risk ? (
+              <div className="inline-flex items-center gap-1">
+                <dt className="text-zinc-500">risk</dt>
+                <dd
+                  className={`rounded px-1.5 py-0.5 text-[10.5px] font-medium uppercase tracking-wider ${riskBadgeClasses(entry.risk)}`}
+                >
+                  {entry.risk}
+                </dd>
+              </div>
+            ) : null}
+            {entry.durationMs ? (
+              <div className="inline-flex items-center gap-1">
+                <dt className="text-zinc-500">dur</dt>
+                <dd className="text-zinc-300">
+                  {formatDuration(entry.durationMs)}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
       </div>
     </article>
   );
+}
+
+function riskBadgeClasses(risk: NonNullable<ScenarioEvidence["risk"]>): string {
+  switch (risk) {
+    case "high":
+      return "bg-red-400/15 text-red-200";
+    case "medium":
+      return "bg-amber-400/15 text-amber-200";
+    case "low":
+    default:
+      return "bg-emerald-400/15 text-emerald-200";
+  }
+}
+
+function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const seconds = ms / 1000;
+  return seconds >= 10
+    ? `${Math.round(seconds)}s`
+    : `${seconds.toFixed(1)}s`;
 }
 
 /**
@@ -132,8 +193,9 @@ function preferredKindsFor(
       return [
         "Destructive action",
         "Outbound action",
-        "Cost",
         "Audit gap",
+        "Production gate",
+        "Cost",
         "Tool call",
         "Final output",
       ];

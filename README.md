@@ -1,178 +1,149 @@
 # ArcadeOps Control Tower
 
-> **The production gate for autonomous AI agents.**
+> **A Gemini-powered production gate for autonomous AI agents.**
 >
-> _Can this AI agent run safely ship to production?_ Replay or paste an
-> agent trace. Gemini audits the plan, tools, cost, risks and output,
-> then returns a production-readiness verdict and recommends guardrails
-> you can re-score against.
+> ArcadeOps lets autonomous agents use tools, delegate to sub-agents, and
+> execute business workflows. Control Tower audits every multi-agent run
+> with Gemini before it can safely ship to production.
 
 Built for **AI Agent Olympics** · Lablab.ai · Milan AI Week 2026.
 
-| Link        | URL                                                                |
-| ----------- | ------------------------------------------------------------------ |
-| Live demo   | _<paste Vercel URL>_                                               |
-| Source      | this repository (MIT)                                              |
-| Video (MP4) | _<placeholder — see [`docs/VIDEO_SCRIPT.md`](docs/VIDEO_SCRIPT.md)>_ |
-| Slides (PDF)| _<placeholder — see [`docs/DECK_OUTLINE.md`](docs/DECK_OUTLINE.md)>_|
+| Link         | URL                                                                  |
+| ------------ | -------------------------------------------------------------------- |
+| Live demo    | https://arcadeops-control-tower-hackathon.vercel.app/control-tower   |
+| Source       | this repository (MIT)                                                |
+| Submission   | [`docs/SUBMISSION_LABLAB.md`](docs/SUBMISSION_LABLAB.md)             |
+| Video script | [`docs/VIDEO_SCRIPT_90S.md`](docs/VIDEO_SCRIPT_90S.md)               |
+| Recording QA | [`docs/RECORDING_CHECKLIST.md`](docs/RECORDING_CHECKLIST.md)         |
 
 ---
 
-## 1. Why
+## 1. The 60-second pitch
 
-Companies are starting to deploy autonomous AI agents in production.
-The hard problem is no longer building agents — it's deciding when a
-run is actually safe to ship. Today, every run is a black box: plans,
-tool calls, costs, risks and outputs are scattered across providers
-and dashboards. Teams ship on faith.
+Companies are starting to deploy autonomous AI agents — agents that
+delegate work to sub-agents, call real tools, write to CRMs, send emails
+to customers. **The hard problem is no longer building agents — it is
+deciding when a multi-agent run is actually safe to ship.**
+
+Today, every run is a black box. Plans, tool calls, sub-agent
+delegations, costs, risks and outputs are scattered across logs and
+dashboards. Teams ship on faith.
 
 **ArcadeOps Control Tower** turns every autonomous agent run into an
-auditable trace, then asks **Google Gemini** to act as a reliability
-judge over that trace.
+auditable trace, then ships a **three-layer trust stack** on top:
 
-## 2. What it does
+1. **Gemini Reliability Agent** reads the full multi-agent trace and
+   produces a structured judgment (verdict, score, typed risks,
+   remediation plan).
+2. **Deterministic policy gates** apply non-negotiable production rules
+   on top of Gemini's reasoning (no destructive write without approval,
+   no outbound email without review, no write without audit, no
+   unbounded cost).
+3. **Verdict consistency layer** guarantees that the final score,
+   verdict and recommended action are mathematically coherent — a
+   "blocked" verdict can never recommend "ship".
 
-Three layers, one screen:
+The headline: **Gemini reasons on the trace. ArcadeOps enforces the
+production gate.**
 
-1. **Replay layer** — a deterministic SSE stream replays a recorded
-   agent trace: phases, tool calls with status and duration, observability
-   metrics (tokens, cost USD, latency, provider/model), risk flags and
-   the final report. **No API key required.** Identical traces on every
-   run, by design — perfect for video and judging.
-2. **Gemini Reliability Judge** — when `GEMINI_API_KEY` is configured,
-   Gemini reads the trace and returns a strict JSON verdict: a readiness
-   score (0–100), a verdict (ready / needs_review / blocked), typed
-   risks with evidence, cost / tool-safety / observability assessments,
-   missing evidence, a numbered remediation plan, an executive
-   decision and a business-value paragraph.
-3. **Deployment layer** — public demo on Vercel today; the same
-   standalone Next.js bundle ships in a multi-stage Dockerfile that
-   runs on Vultr VPS, Vultr Container Registry or Vultr Kubernetes.
-   See [`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
+## 2. What you'll see in 90 seconds
 
-## 3. Demo flow
+Open `/control-tower`. The default scenario is **Multi-agent customer
+escalation run**:
 
-> From an unsafe agent run to a guarded re-score in under two minutes.
+```
+CEO Agent
+ └─ delegates to Support Agent
+     ├─ Support Agent calls Knowledge Base
+     ├─ Support Agent delegates to CRM Agent
+     │   └─ CRM Agent attempts CRM update (write, no approval)
+     └─ Support Agent delegates to Email Agent
+         └─ Email Agent attempts to send customer email (no review)
 
-1. Open `/control-tower`.
-2. Pick a recorded run — the **Blocked CRM write agent** (critical
-   risk) is the wow scenario, but a **needs-review support agent** and
-   a **production-ready research agent** are also one click away.
-3. Inspect the evidence — tool calls, missing approvals, missing
-   audit trail, cost spikes — before any model call.
-4. Click **Audit this run**. Gemini reads the trace server-side and
-   returns a typed verdict: score, verdict, risks, missing evidence,
-   remediation plan.
-5. Pick the recommended guardrails and click **Re-score with
-   guardrails**. A second pass returns a what-if simulation: same
-   trace, same Gemini, but evaluated as if the guardrails were
-   already implemented. The before / after comparison shows the
-   readiness delta.
+→ Control Tower BLOCKS the run before any real system is touched.
+```
 
-You can also **paste your own trace** (logs, JSON, framework outputs,
-MCP tool logs) up to 12 000 characters — the server redacts emails,
-URLs, secrets and IDs before reaching the model. Or take the **safe
-sample replay** path for a quick deterministic walkthrough.
+The right-hand panel shows the Gemini Reliability Agent producing a
+strict JSON verdict, the policy gates that fired, and a one-click
+**Re-run with guardrails** simulation that re-scores the same trace as
+if the recommended guardrails were already implemented.
 
-### Interactive judging modes
+You can also pick:
 
-| Mode                       | What it does                                                                                                                |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Replay sample run**      | Streams the bundled deterministic trace via SSE. Perfect for video — same events every time, no API key required.           |
-| **Audit unsafe sample**    | One-click audit of the **Blocked CRM write agent** scenario. Gemini blocks the run and explains why.                        |
-| **Paste your own trace**   | Drop any agent trace (≤ 12 000 chars). Server-side sanitization scrubs PII / secrets, then Gemini judges the cleaned text.  |
-| **Simulate guardrails**    | Pick a checklist of production guardrails and re-score the same run as a what-if simulation. Returns a residual-risk view. |
+- **Production-ready research agent** — score ≥ 80, verdict `ready`,
+  no policy gate triggered.
+- **Needs-review support agent** — verdict `needs_review`, score in the
+  middle band, missing observability evidence.
+- **Paste your own trace** (≤ 12 000 chars) — server-side sanitization
+  scrubs emails, URLs, secrets, UUIDs before the prompt is built.
 
-## 4. Google Gemini Reliability Judge
+## 3. The differentiator — a 3-layer trust stack
 
-This is the differentiator versus a generic "agent demo".
+This is what separates Control Tower from a generic "ask the LLM if the
+run looks fine" demo.
 
-- Endpoint: [`src/app/api/gemini/judge/route.ts`](src/app/api/gemini/judge/route.ts)
-  (Node.js runtime, `maxDuration: 60`, hard 30-second client timeout).
-- Model: defaults to **`gemini-2.5-flash`** (fast, cheap, returns valid
-  JSON consistently). Override with `GEMINI_MODEL`.
-- Four input modes: `sample_replay` (bundled fixture), `scenario_trace`
-  (pre-canned scenarios), `pasted_trace` (free-form user paste, sanitized
-  server-side, ≤ 12 000 chars), and `remediation_simulation` (re-score
-  the same run with guardrails applied as a what-if).
-- Output: a strict JSON object validated by
-  [`src/lib/control-tower/gemini-types.ts`](src/lib/control-tower/gemini-types.ts).
-  Off-spec responses are normalized; unparseable responses surface a
-  clean error to the UI.
-- Defensive guards:
-  - 5 requests / 10 minutes / IP rate limit
-    ([`src/lib/server/rate-limit.ts`](src/lib/server/rate-limit.ts)),
-  - 12 000-char hard cap on pasted traces,
-  - server-side redaction of emails, URLs, bearer tokens, common API
-    key prefixes and UUIDs before the prompt is built,
-  - 30-second upstream timeout, propagated client disconnect → cancel,
-  - no auto-run anywhere — every Gemini call is an explicit user click.
-- Failure modes are explicit:
-  - missing key → 503 `GEMINI_NOT_CONFIGURED` (panel hidden in UI),
-  - rate-limited → 429 `RATE_LIMITED` (with `Retry-After` header),
-  - bad payload → 400 `INVALID_REQUEST`,
-  - upstream HTTP error → 502 `GEMINI_REQUEST_FAILED`,
-  - unparseable JSON → 502 `GEMINI_INVALID_RESPONSE`.
+| # | Layer | What it does | Where in code |
+|---|---|---|---|
+| 1 | **Gemini Reliability Agent** | Reads the trace, produces a strict JSON verdict (score, verdict, risks, missing evidence, remediation, executive decision) | [`src/app/api/gemini/judge/route.ts`](src/app/api/gemini/judge/route.ts) |
+| 2 | **Deterministic policy gates** | Pure-TS rules, no I/O, no LLM. Cap the verdict on hard production violations (destructive without approval, outbound without review, write without audit, cost unbounded) | [`src/lib/control-tower/policy-gates.ts`](src/lib/control-tower/policy-gates.ts) |
+| 3 | **Verdict consistency** | Pure-TS post-processor. Guarantees `score`, `verdict` and `executiveDecision` are coherent. A "blocked" verdict can never recommend "ship". | [`src/lib/control-tower/verdict-consistency.ts`](src/lib/control-tower/verdict-consistency.ts) |
 
-The Gemini API key never reaches the browser. The
-[`/api/capabilities`](src/app/api/capabilities/route.ts) endpoint
-returns only booleans + the public model name so the UI can decide
-**at runtime** whether to show the judge panel — no rebuild needed
-when the key is added or rotated.
+The pipeline is strictly ordered: **Gemini → policy gates → verdict
+consistency → UI**. Gates and the consistency layer can only **tighten**
+the verdict — they never relax it. The decision card surfaces a short
+`Policy gate: …` badge whenever a rule fires, plus a disclosure listing
+every triggered rule.
 
-### 4.1. Deterministic production policy gates
+The judge panel header carries a live mode pill so judges always know
+where they stand: **Mode: Live Gemini audit** when `GEMINI_API_KEY` is
+configured server-side, **Mode: Deterministic replay** otherwise.
 
-ArcadeOps combines **Gemini reasoning with deterministic production
-policy gates**. Gemini audits the trace and explains risks; ArcadeOps
-applies non-negotiable rules on top of the model verdict, so a
-manifestly unsafe run can never silently be marked READY.
+## 4. Demo flow (the 90-second script)
 
-The gates live in
-[`src/lib/control-tower/policy-gates.ts`](src/lib/control-tower/policy-gates.ts)
-(pure TypeScript, no I/O) and are applied server-side in the judge
-route after `normalizeJudgeResult`. Today's rules:
+> See [`docs/VIDEO_SCRIPT_90S.md`](docs/VIDEO_SCRIPT_90S.md) for the
+> timecoded version with B-roll cues.
 
-| Rule | Severity | Effect on verdict |
-|---|---|---|
-| Destructive action attempted without human approval | high | caps verdict at `blocked`, score ≤ 45 |
-| Outbound customer message attempted without review | high | caps verdict at `blocked`, score ≤ 45 |
-| Write actions without replay or audit evidence | high | caps verdict at `needs_review`, score ≤ 70 |
-| Cost budget exceeded or unbounded | medium | caps verdict at `needs_review`, score ≤ 75 |
+1. **0–10 s** — open `/`. Read the tagline aloud: *"A Gemini-powered
+   production gate for autonomous AI agents."* Click **Launch Control
+   Tower**.
+2. **10–25 s** — scenario picker: highlight the **Multi-agent customer
+   escalation run** "Recommended demo path" badge. Mention the agent
+   chain (CEO → Support → CRM + Email).
+3. **25–40 s** — evidence timeline: point at the per-step `agent`,
+   `tool`, `risk` and `durationMs` fields. *"This is the structured
+   trace ArcadeOps captures for every run."*
+4. **40–65 s** — click **Run production gate**. Show the live Gemini
+   audit pill, the JSON verdict (`blocked`, score ≤ 45), the typed
+   risks with evidence, and the `Policy gate: …` badges.
+5. **65–80 s** — pick 2 recommended guardrails ("Require human approval
+   for destructive tools", "Require review before outbound email"),
+   click **Re-run production gate**. Show the score delta (e.g. 28 →
+   78) and the verdict moving to `needs_review` or `ready`.
+6. **80–90 s** — punchline: *"Gemini reasons on the trace. ArcadeOps
+   enforces the production gate."* Cut to the **Powered by ArcadeOps
+   Runtime** section to hint at the broader platform.
 
-The gates only **tighten** the verdict — they never relax it, never
-overwrite Gemini's prose, and only append a risk if Gemini did not
-already flag the same concern. In `remediation_simulation` mode, a
-rule is *covered* (and does not fire) when the user-selected
-guardrails clearly address it (e.g. "Require human approval for
-destructive tools" covers the destructive-without-approval rule).
+## 5. Live vs Replay
 
-The decision card surfaces a short `Policy gate: …` badge whenever a
-rule fires, plus a disclosure listing the full set of triggered
-rules — making it explicit that *Gemini provided the audit; ArcadeOps
-applied non-negotiable production gates*.
+| Layer                          | Replay mode  | Live Gemini mode                |
+| ------------------------------ | ------------ | ------------------------------- |
+| Mission selection              | Real         | Real                            |
+| SSE streaming protocol         | Real         | Real                            |
+| Multi-agent timeline           | Sanitized recorded trace | Same trace, used as evidence |
+| Phase / tool call timeline     | Real         | Real                            |
+| Risk flags / evidence          | From trace   | From trace                      |
+| **Production-readiness verdict** | —          | **Real Gemini reasoning, live** |
+| **Policy gates**               | —            | **Live, deterministic**         |
+| **Verdict consistency**        | —            | **Live, deterministic**         |
 
-## 5. Replay vs live
+Replay works with **zero env vars** (perfect for video reproducibility).
+The Gemini Reliability Agent activates with a single env var
+(`GEMINI_API_KEY`) — no rebuild required, the panel detects it at
+runtime via [`/api/capabilities`](src/app/api/capabilities/route.ts).
 
-| Layer                        | Replay mode  | Gemini Judge mode                    |
-| ---------------------------- | ------------ | ------------------------------------ |
-| Mission selection            | Real         | Real                                 |
-| SSE streaming protocol       | Real         | Real                                 |
-| Phase / tool call timeline   | Sanitized recorded trace | Same trace, used as evidence |
-| LLM execution                | Replayed     | Real Gemini call (live verdict)      |
-| Token usage / cost           | From trace   | From trace                           |
-| Risk flags / recommendations | From trace   | From trace                           |
-| Production-readiness verdict | —            | **Real Gemini reasoning, live**      |
-
-The replay fixture (`src/data/demo-run.json`) can be regenerated from
-a sanitized real ArcadeOps agent trace using the private export script
-([`scripts/export-control-tower-trace.ts`](https://example.invalid)
-in the private repo). The public fixture is safe, deterministic and
-contains no secrets, no orgIds, no userIds, no client names.
-
-> The full ArcadeOps platform supports live agent execution, persistent
-> tools, multi-provider LLM routing and observability. The hackathon
-> demo only exposes a focused, sandboxed subset and **disables the
-> live backend adapter publicly for safety**.
+The replay fixture (`src/data/demo-run.json`) was generated from a
+sanitized real ArcadeOps trace. It contains no orgId, no userId, no
+client name, no internal URL, no secret.
 
 ## 6. Architecture
 
@@ -180,10 +151,12 @@ contains no secrets, no orgIds, no userIds, no client names.
 ┌──────────────────────────────────────────────────────────────────────┐
 │  Browser — /control-tower                                            │
 │  ├─ ControlTowerExperience (client)                                  │
-│  │   ├─ DemoMissionLauncher (Replay) ─────► /api/replay     (SSE)    │
-│  │   └─ GeminiJudgePanel ─────────────────► /api/gemini/judge (POST) │
-│  │                          /api/capabilities (GET, runtime probe)   │
-│  └─ ResultCard / ObservabilityPanel / ToolCallCard …                 │
+│  │   ├─ TraceScenarioPicker  ─────► picks a multi-agent scenario     │
+│  │   ├─ ScenarioEvidenceTimeline ► shows per-step agent/tool/risk    │
+│  │   ├─ DemoMissionLauncher ──────► /api/replay        (SSE)         │
+│  │   └─ GeminiJudgePanel ─────────► /api/gemini/judge  (POST)        │
+│  │                                  /api/capabilities  (GET)         │
+│  └─ ResultCard / DecisionCard / PolicyGateBadges …                   │
 └────────────────────────┬─────────────────────────────────────────────┘
                          │
         ┌────────────────┴────────────────┬────────────────────┐
@@ -193,43 +166,51 @@ contains no secrets, no orgIds, no userIds, no client names.
 GET /api/replay (SSE)            POST /api/gemini/judge   POST /api/arcadeops/run
         │                                 │                    │
 src/data/demo-run.json           Google Gemini API        ArcadeOps backend
-                                 (server-side only)       (server proxy, off in
-                                                           public deployment)
+                                 (server-side only)       (off in public deployment)
+                                 + policy-gates.ts
+                                 + verdict-consistency.ts
 ```
 
 All adapters emit the same Control Tower event model
-(`src/lib/control-tower/types.ts`): `phase_change`, `step`, `tool_call`,
-`token`, `observability`, `result`, `done`, `error`, `heartbeat`.
+([`src/lib/control-tower/types.ts`](src/lib/control-tower/types.ts)):
+`phase_change`, `step`, `tool_call`, `token`, `observability`, `result`,
+`done`, `error`, `heartbeat`.
 
-## 7. Vultr-ready deployment
+The judge route enforces:
 
-This repo ships a multi-stage Dockerfile and a `/api/health` endpoint so
-the same image runs on Vultr in three flavors:
+- 5 requests / 10 minutes / IP rate limit,
+- 12 000-char hard cap on pasted traces,
+- server-side redaction of emails, URLs, bearer tokens, common API key
+  prefixes, UUIDs,
+- 30-second hard upstream timeout, propagated client disconnect →
+  cancel,
+- no auto-run anywhere — every Gemini call is an explicit user click.
 
-- single-VPS Docker run,
-- Vultr Container Registry + plain Docker host,
-- Vultr Kubernetes Engine deployment.
+Failure modes are explicit and never leak the upstream key:
 
-Replay works with **zero env vars**. The Gemini Reliability Judge
-activates with a single env var. Full guide:
-[`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
+- missing key → 503 `GEMINI_NOT_CONFIGURED` (panel discreet in UI),
+- rate-limited → 429 `RATE_LIMITED` (with `Retry-After` header),
+- bad payload → 400 `INVALID_REQUEST`,
+- upstream HTTP error → 502 `GEMINI_REQUEST_FAILED`,
+- unparseable JSON → 502 `GEMINI_INVALID_RESPONSE`.
 
-## 8. Run locally
+## 7. Run locally
 
 Requires Node 20+ and npm.
 
 ```bash
 npm install
 npm run dev
-# Open http://localhost:3000/control-tower
+# Open http://localhost:3000/
 ```
 
-That's it for replay mode. Click **▶ Replay an agent run** and the SSE
-stream populates phases, tool calls, observability and the final report.
+That's it for replay mode. The default scenario streams without any
+key. The Gemini judge panel will show a discreet aside until you
+configure a key.
 
-## 9. Configure Gemini
+## 8. Configure Gemini (live audit mode)
 
-Create `.env.local` (never committed) at the repo root:
+Create `.env.local` at the repo root (never committed):
 
 ```env
 GEMINI_API_KEY=your-google-ai-studio-key
@@ -239,27 +220,50 @@ GEMINI_MODEL=gemini-2.5-flash
 
 Get a key here: https://aistudio.google.com/app/apikey
 
-Restart `npm run dev`. The **Run Gemini reliability judge** button is
-enabled automatically — no rebuild needed (capabilities are detected at
-runtime).
+Restart `npm run dev`. The **Run production gate** button is enabled
+automatically — no rebuild needed (capabilities are detected at
+runtime). The mode pill switches to **Mode: Live Gemini audit**.
 
 For Vercel: add `GEMINI_API_KEY` in Project Settings → Environment
 Variables for **Production + Preview + Development**, then redeploy
-once. The capabilities endpoint will pick up the change on the next
-function invocation.
+once.
+
+## 9. Deploy
+
+### Vercel (current public demo)
+
+```bash
+vercel link
+vercel env add GEMINI_API_KEY
+vercel --prod
+```
+
+The `/api/health` endpoint returns 200 once the function is warm.
+
+### Vultr (Docker / VCR / VKE)
+
+This repo ships a multi-stage Dockerfile and a `/api/health` endpoint
+so the same image runs on Vultr in three flavors:
+
+- single-VPS Docker run,
+- Vultr Container Registry + plain Docker host,
+- Vultr Kubernetes Engine deployment.
+
+Replay works with **zero env vars**. The Gemini Reliability Agent
+activates with a single env var. Full guide:
+[`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
 
 ## 10. Security
 
-- **No secrets in the repo.** The `.gitignore` blocks `.env`, `.env.*`
-  and any local override; only `.env.example` is tracked.
+- **No secrets in the repo.** `.gitignore` blocks `.env`, `.env.*` and
+  any local override; only `.env.example` is tracked.
 - **Server-side keys only.** `GEMINI_API_KEY` is read by
   `/api/gemini/judge` and never serialized into a response or sent to
   the browser. Same for the optional `ARCADEOPS_DEMO_TOKEN` used by the
   live proxy.
 - **Sanitized public trace.** `src/data/demo-run.json` contains no
   orgId, userId, taskId, agentId, email, internal URL, client name or
-  memory key. The export script in the private ArcadeOps repo enforces
-  these guarantees.
+  memory key.
 - **Defensive judge route.** Unknown JSON fields in client requests are
   dropped, payloads are size-clamped, the upstream call has a hard 30 s
   timeout, and the `/api/gemini/judge` failure modes never leak the
@@ -271,24 +275,22 @@ function invocation.
 
 ## 11. Limitations
 
-- The Gemini judge is a **second opinion**, not ground truth. Use it
-  to surface risks and missing evidence — not as a sign-off mechanism.
-- The replay fixture is a single recorded run. The full ArcadeOps
+- The Gemini judge is a **second opinion**, not ground truth. The
+  policy gates and consistency layer are the actual production gate.
+  Use the judge to surface risks and missing evidence — not as a
+  sign-off mechanism.
+- The replay fixtures are recorded sanitized runs. The full ArcadeOps
   platform supports live multi-agent orchestration, persistent tools,
   multi-provider routing and governance — none of that ships in the
   public demo.
-- No test runner is wired in (V1) — verification is manual:
-  - `/control-tower` loads with no console errors.
-  - Replay completes on a `done` event.
-  - Without `GEMINI_API_KEY` the judge panel is hidden / discreet.
-  - With `GEMINI_API_KEY` a verdict returns in < 15 s.
+- No automated test runner is wired in for V1 — verification is manual,
+  scripted in [`docs/RECORDING_CHECKLIST.md`](docs/RECORDING_CHECKLIST.md).
 
 ## 12. Hackathon submission
 
-- Submission copy: [`docs/SUBMISSION_COPY.md`](docs/SUBMISSION_COPY.md)
-- Video script (3 min): [`docs/VIDEO_SCRIPT.md`](docs/VIDEO_SCRIPT.md)
-- Deck outline (8 slides): [`docs/DECK_OUTLINE.md`](docs/DECK_OUTLINE.md)
-- Build-in-public posts: [`docs/BUILD_IN_PUBLIC.md`](docs/BUILD_IN_PUBLIC.md)
+- Lablab submission copy: [`docs/SUBMISSION_LABLAB.md`](docs/SUBMISSION_LABLAB.md)
+- 90-second video script: [`docs/VIDEO_SCRIPT_90S.md`](docs/VIDEO_SCRIPT_90S.md)
+- Pre-recording checklist: [`docs/RECORDING_CHECKLIST.md`](docs/RECORDING_CHECKLIST.md)
 - Vultr deployment: [`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md)
 - Original V0 spec: [`docs/DEMO_SPEC.md`](docs/DEMO_SPEC.md)
 
@@ -311,8 +313,11 @@ No database, no auth, no billing. The only state is the SSE stream.
 
 ```bash
 npm run lint      # ESLint (eslint-config-next)
+npx tsc --noEmit  # TypeScript strict
 npm run build     # Production build (no key required)
 ```
+
+All three are green on `main` and run on every push.
 
 ## License
 

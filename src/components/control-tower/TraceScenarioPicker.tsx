@@ -7,6 +7,7 @@ import {
   Gauge,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 import type {
@@ -150,13 +151,19 @@ function CriticalScenarioCard({
         className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-red-500/10 blur-3xl"
       />
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${palette.badge}`}
           >
             <ShieldAlert className="h-3 w-3" aria-hidden />
             {palette.riskLabel}
           </span>
+          {scenario.recommendedDemoPath ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-400/30">
+              <Sparkles className="h-3 w-3" aria-hidden />
+              Recommended demo path
+            </span>
+          ) : null}
           <span className="text-[10px] uppercase tracking-wider text-red-200/70">
             Expected: blocked
           </span>
@@ -168,8 +175,7 @@ function CriticalScenarioCard({
           {scenario.title}
         </h3>
         <p className="max-w-2xl text-sm leading-relaxed text-zinc-300">
-          This agent tries to delete CRM records and email customers without
-          approval.
+          {scenario.shortDescription}
         </p>
       </div>
 
@@ -177,7 +183,7 @@ function CriticalScenarioCard({
         aria-hidden
         className="mt-1 inline-flex w-fit items-center gap-2 rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-500/20 transition-colors group-hover:bg-red-400"
       >
-        Audit unsafe run
+        Audit this run
         <ArrowRight className="h-4 w-4" aria-hidden />
       </span>
     </button>
