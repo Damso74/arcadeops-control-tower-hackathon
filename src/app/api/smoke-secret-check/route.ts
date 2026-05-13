@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * GET /api/_smoke-secret?mode=none|wrong|good
+ * GET /api/smoke-secret-check?mode=none|wrong|good
  *
  * Lot 5 FULL temporary smoke endpoint that probes the Vultr runner
  * `x-runner-secret` middleware end-to-end from the public Internet.
@@ -19,7 +19,8 @@ export const maxDuration = 60;
  *   - mode=good  → runner returns 200 (real header sent)
  *
  * Token paranoia: even with `mode=good`, the response body never echoes
- * `RUNNER_SECRET` back to the client.
+ * `RUNNER_SECRET` back to the client. Should be removed once the
+ * judging window closes (TODO_LOT_5_FULL.md).
  */
 export async function GET(req: NextRequest) {
   const mode = (req.nextUrl.searchParams.get("mode") ?? "good").toLowerCase();
