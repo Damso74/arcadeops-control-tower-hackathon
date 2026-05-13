@@ -47,3 +47,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Vultr provisioning state (Lot 1b)
+.vultr-state.json
+.vultr-*.log
+
+# Runner local debug/smoke artifacts (Lot 2)
+runner/.uvicorn.log
+runner/.uvicorn.err.log
+runner/.smoke-payload.json
+runner/.smoke-response.json
