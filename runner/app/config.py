@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     )
     runner_secret: str | None = Field(default=None, alias="RUNNER_SECRET")
 
+    # Lot 5 FULL — kill-switch for the /_diag introspection endpoint
+    # (returns booleans + lengths, never echoes the secret value). Off
+    # by default; flip RUNNER_DIAG_ENABLED=1 in the .env to re-enable.
+    runner_diag_enabled: bool = Field(
+        default=False, alias="RUNNER_DIAG_ENABLED"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
