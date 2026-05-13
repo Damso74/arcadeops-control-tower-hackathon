@@ -44,6 +44,23 @@ export async function GET(req: NextRequest) {
   }
   // mode=none → no x-runner-secret at all.
 
+  // Diagnostic probe: read the runner's loaded settings (no secret echoed).
+  let diag: unknown = null;
+  try {
+    const diagResp = await fetch(`${baseUrl}/_diag`, {
+      method: "GET",
+      cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (diagResp.ok) {
+      diag = (await diagResp.json()) as unknown;
+    } else {
+      diag = { error: `diag_status_${diagResp.status}` };
+    }
+  } catch (err) {
+    diag = { error: (err as Error).message };
+  }
+
   const startedAt = Date.now();
   let upstreamStatus = 0;
   let upstreamBody = "";
@@ -79,5 +96,6 @@ export async function GET(req: NextRequest) {
     upstream_status: upstreamStatus,
     upstream_body_preview: upstreamBody,
     elapsed_ms: Date.now() - startedAt,
+    runner_diag: diag,
   });
 }
