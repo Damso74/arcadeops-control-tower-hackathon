@@ -1,0 +1,72 @@
+[
+  {
+    "name": "kb.search",
+    "description": "Recherche dans la base de connaissances interne (SLA, playbooks).",
+    "risk": "LOW",
+    "approval_required": false,
+    "source": "BUILTIN"
+  },
+  {
+    "name": "crm.lookup",
+    "description": "Lecture fiche client CRM (contacts, notes, statut).",
+    "risk": "LOW",
+    "approval_required": false,
+    "source": "MOCK_API"
+  },
+  {
+    "name": "crm.update_attempt",
+    "description": "Tentative d'écriture CRM (statut, escalade, champs sensibles).",
+    "risk": "HIGH",
+    "approval_required": true,
+    "source": "MOCK_API"
+  },
+  {
+    "name": "email.draft",
+    "description": "Rédaction d'un brouillon email interne (non envoyé).",
+    "risk": "LOW",
+    "approval_required": false,
+    "source": "BUILTIN"
+  },
+  {
+    "name": "email.send_attempt",
+    "description": "Tentative d'envoi email vers un domaine externe (client).",
+    "risk": "HIGH",
+    "approval_required": true,
+    "source": "MOCK_API"
+  },
+  {
+    "name": "policy.check",
+    "description": "Vérification des règles métier (seuils remboursement, approbations).",
+    "risk": "LOW",
+    "approval_required": false,
+    "source": "BUILTIN"
+  },
+  {
+    "name": "approval.request",
+    "description": "Ouverture d'une demande d'approbation humaine traçable.",
+    "risk": "MEDIUM",
+    "approval_required": false,
+    "source": "BUILTIN"
+  },
+  {
+    "name": "audit.log",
+    "description": "Journalisation d'événement pour conformité et post-mortem.",
+    "risk": "LOW",
+    "approval_required": false,
+    "source": "BUILTIN"
+  },
+  {
+    "name": "budget.check",
+    "description": "Contrôle budget/coût estimé avant actions coûteuses.",
+    "risk": "LOW",
+    "approval_required": false,
+    "source": "BUILTIN"
+  },
+  {
+    "name": "risk.scan",
+    "description": "Analyse risques (injection de prompt, exfiltration, conformité).",
+    "risk": "MEDIUM",
+    "approval_required": false,
+    "source": "MCP_COMPATIBLE"
+  }
+]
