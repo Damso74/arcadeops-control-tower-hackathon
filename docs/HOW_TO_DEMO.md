@@ -1,39 +1,40 @@
 # How to demo ArcadeOps Control Tower in 60 seconds
 
 > The jury has 60 seconds of attention. This document is the script.
-> If something goes wrong: Plan B is in §4, Plan C is in §5, prepared
-> Q&A is in §6.
+> The primary path is the clickable `/control-tower` page (§3). The
+> one-curl path (§3b) is a debug / secondary path. Plan B is in §4,
+> Plan C is in §5, prepared Q&A is in §6.
 
 ## 1. Prerequisites
 
 - A laptop with stable internet (wired or 5 GHz Wi-Fi).
 - A modern browser (Chrome / Edge / Firefox / Safari, all tested).
-- A terminal with `curl` and ideally `jq` available.
-  - On Windows: PowerShell 7+ has both via `winget install jqlang.jq`.
-  - On macOS / Linux: `brew install jq` or `apt-get install jq`.
-- The tab `https://arcadeops-control-tower-hackathon.vercel.app`
-  pre-opened.
+- The tab
+  <https://arcadeops-control-tower-hackathon.vercel.app/control-tower>
+  pre-opened (this is the **primary** demo surface).
 - The repository tab
   `https://github.com/Damso74/arcadeops-control-tower-hackathon`
   pre-opened.
-- (Optional) A second terminal pre-loaded with the curl one-liner ready
-  to paste — it saves 3 seconds of demo budget.
+- (Optional, secondary path) a terminal with `curl` and `jq`.
+  - On Windows: PowerShell 7+ has both via `winget install jqlang.jq`.
+  - On macOS / Linux: `brew install jq` or `apt-get install jq`.
 
 ## 2. Pre-demo health check (run 5 minutes before)
 
 Run all four of these and confirm green:
 
 ```bash
-# 1. Vercel frontend — should redirect / render the landing page
-curl -sS -o /dev/null -w "%{http_code}\n" https://arcadeops-control-tower-hackathon.vercel.app
+# 1. Vercel control tower page — should return 200
+curl -sS -o /dev/null -w "%{http_code}\n" https://arcadeops-control-tower-hackathon.vercel.app/control-tower
 
 # 2. Vercel proxy descriptor — should return JSON with proxy info
 curl -sS https://arcadeops-control-tower-hackathon.vercel.app/api/runner-proxy
 
-# 3. Vultr runner health — should return JSON with status=ok
-curl -sS http://140.82.35.52/health
+# 3. Vultr runner health (public, no x-runner-secret needed)
+curl -sS http://136.244.89.159/health
 
-# 4. End-to-end LIVE Gemini run — should return is_mocked=false
+# 4. End-to-end LIVE Gemini run via the SSE-aware /api/runner-proxy
+#    (the x-runner-secret is injected server-side; the curl never sees it)
 curl -sS -X POST \
   https://arcadeops-control-tower-hackathon.vercel.app/api/runner-proxy \
   -H "Content-Type: application/json" \
@@ -47,68 +48,68 @@ Expected output of the last command:
 {
   "status": "BLOCKED",
   "mocked": false,
-  "tokens": 11453,
-  "cost": 0.001001
+  "tokens": 16322,
+  "cost": 0.001424
 }
 ```
 
 If `tokens` ≈ 0 or `mocked` is `true`, see §4 (Plan B).
 
-## 3. The 60-second script (Plan A — happy path)
+## 3. The 60-second script (Plan A — clickable `/control-tower` page)
 
 > The mission is hard-coded for stability:
 > `"VIP customer threatens to churn after SLA breach"`. It deliberately
 > contains a prompt-injection-baited tool result inside the runner's
 > CRM mock so the BLOCKED verdict is reproducible.
 
+> Two reference screenshots of the UI mid-run are committed at
+> [`docs/assets/live-demo-trace.png`](assets/live-demo-trace.png) and
+> [`docs/assets/gemini-reliability-judge.png`](assets/gemini-reliability-judge.png).
+> They are the exact visual you will reproduce on stage.
+
 ### 0:00 → 0:10 — Hook
 
 > **Say:** *"ArcadeOps Control Tower. Gemini runs the agent. Vultr
 > executes the workflow. ArcadeOps decides if it can ship. Let me
-> prove it in one curl."*
+> prove it live."*
 
-> **Click:** show the Vercel tab full-screen for two seconds, then
-> Alt-Tab to the terminal.
+> **Click:** focus the `/control-tower` tab full-screen.
 
-### 0:10 → 0:25 — Live one-curl mission
+### 0:10 → 0:25 — Launch the live run
 
-> **Type or paste:**
->
-> ```bash
-> curl -sS -X POST \
->   https://arcadeops-control-tower-hackathon.vercel.app/api/runner-proxy \
->   -H "Content-Type: application/json" \
->   -d '{"mission":"VIP customer threatens to churn after SLA breach"}' | jq .
-> ```
->
-> **Say:** *"This POSTs a mission to the Vercel proxy. Vercel forwards
-> to a FastAPI runner on Vultr Frankfurt. The runner runs a Planner
-> and a Worker on Gemini 2.5 Flash with native function calling."*
+> **Click:** the green **⚡ Run live with ArcadeOps backend — Gemini +
+> Vultr** button inside panel **1 — Pick an agent run**.
 
-The response takes ~17.6 seconds. While it's running, switch back to
-the Vercel UI and let the EventTimeline auto-populate as it streams
-through the proxy.
+> **Say:** *"This POSTs the mission to Vercel. Vercel injects an
+> `x-runner-secret` shared-secret header and forwards to a FastAPI
+> runner on Vultr Frankfurt. The runner runs a Planner and a Worker on
+> Gemini 2.5 Flash with native function calling, and streams every
+> phase change, step and tool call back as Server-Sent Events."*
+
+The trace lights up over ~23 seconds. Phase pills flip live; the
+`EventTimeline` populates step by step; `ToolCallCard`s fan out.
 
 ### 0:25 → 0:40 — Read the trace out loud
 
-> **Click on:** the EventTimeline panel in the UI.
+> **Point at:** the `EventTimeline` panel.
 >
-> **Say:** *"One PLANNER step. Five tool calls — `crm.lookup`,
-> `kb.search`, `email.draft`, `approval.request`, `audit.log`. One
-> conclusion step. Seven steps total, 11 453 Gemini tokens, one-tenth
-> of a cent."*
+> **Say:** *"One PLANNER step. Six WORKER tool_call steps — seven
+> calls total: `kb.search`, `crm.lookup`, `policy.check`,
+> `email.draft` twice, `approval.request`, `audit.log`. One
+> conclusion step. Eight steps total. 16,322 Gemini tokens. One-tenth
+> of a cent and change."*
 
-> **Highlight in the JSON output:**
+> **Highlight in the observability panel:**
 >
 > - `is_mocked: false` (proves LIVE Gemini)
 > - `model: "gemini-2.5-flash"`
-> - `tokens_used: 11453`
-> - `cost_usd: 0.001001`
+> - `tokens_used: 16322`
+> - `cost_usd: 0.001424`
 > - `runner: "vultr"`
 
 ### 0:40 → 0:55 — The verdict and the gates
 
-> **Click on:** the verdict card (or scroll the JSON to `verdict`).
+> **Click on:** the verdict card.
 >
 > **Say:** *"Verdict: BLOCKED. Three policy gates fired. One — no
 > destructive CRM write without approval. Two — no outbound email
@@ -124,6 +125,23 @@ through the proxy.
 > run for paying customers."*
 
 > **Click:** the GitHub tab, show the README header, then go silent.
+
+## 3b. Secondary path — one-curl debug shot (≈ 30 s)
+
+If the jury asks for raw evidence (or the UI is misbehaving), open a
+terminal and run:
+
+```bash
+curl -sS -X POST \
+  https://arcadeops-control-tower-hackathon.vercel.app/api/runner-proxy \
+  -H "Content-Type: application/json" \
+  -d '{"mission":"VIP customer threatens to churn after SLA breach"}' | jq .
+```
+
+This returns the full `AgentRunTrace` JSON in ~23 s — same Gemini
+call, same Vultr runner, same `BLOCKED` verdict, just without the SSE
+UI layer. The `x-runner-secret` header is injected by the Vercel
+function itself, never by the caller, so the curl stays a one-liner.
 
 ## 4. Plan B — production is degraded
 
@@ -158,7 +176,8 @@ What to do (≈ 30 s):
 
 1. Open the README on the GitHub tab.
 2. Scroll to the **Live demo** section and read the smoke numbers
-   aloud (17.6 s, 11 453 tokens, $0.001001, BLOCKED).
+   aloud (23.44 s, 16 322 tokens, $0.001424, BLOCKED, 8 steps,
+   7 tool calls).
 3. Open `docs/ARCHITECTURE.md` and walk through the sequence diagram.
 4. Open `runner/app/agents/worker.py` and read the system prompt out
    loud — it explicitly mentions anti-injection and approval discipline.
@@ -166,9 +185,14 @@ What to do (≈ 30 s):
    deterministic frontend rules (`destructive_without_approval`,
    `outbound_without_review`, `write_without_audit_or_replay`,
    `cost_budget_exceeded`).
-6. Close strong: *"The system is real. It runs in production at
-   `140.82.35.52`. Here is the smoke output from this morning. The
-   network gods just didn't grant me the live shot."*
+6. Show
+   [`docs/assets/live-demo-trace.png`](assets/live-demo-trace.png) and
+   [`docs/assets/gemini-reliability-judge.png`](assets/gemini-reliability-judge.png)
+   in GitHub directly — they are committed in the repo.
+7. Close strong: *"The system is real. It runs in production at
+   `136.244.89.159`, behind an `x-runner-secret` shared-secret gate.
+   Here is the smoke output from this evening. The network gods just
+   didn't grant me the live shot."*
 
 ## 6. Prepared Q&A
 
@@ -278,14 +302,16 @@ fine" wrapper?
 
 ## 8. Live demo URL summary
 
-| Resource          | URL                                                                  |
-| ----------------- | -------------------------------------------------------------------- |
-| Frontend          | https://arcadeops-control-tower-hackathon.vercel.app                 |
-| Proxy descriptor  | https://arcadeops-control-tower-hackathon.vercel.app/api/runner-proxy |
-| Runner health     | http://140.82.35.52/health                                           |
-| Runner tools      | http://140.82.35.52/tools                                            |
-| GitHub repo       | https://github.com/Damso74/arcadeops-control-tower-hackathon         |
-| Submission body   | [`docs/SUBMISSION_LABLAB.md`](SUBMISSION_LABLAB.md)                  |
-| Architecture      | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)                            |
-| Video script      | [`docs/VIDEO_SCRIPT_90S.md`](VIDEO_SCRIPT_90S.md)                    |
-| Feature catalogue | [`docs/FEATURES.md`](FEATURES.md)                                    |
+| Resource              | URL                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| **Primary UI (SSE)**  | https://arcadeops-control-tower-hackathon.vercel.app/control-tower                   |
+| Landing               | https://arcadeops-control-tower-hackathon.vercel.app                                 |
+| Plain-JSON proxy      | https://arcadeops-control-tower-hackathon.vercel.app/api/runner-proxy                |
+| Runner health         | http://136.244.89.159/health                                                         |
+| Runner tools          | http://136.244.89.159/tools                                                          |
+| GitHub repo           | https://github.com/Damso74/arcadeops-control-tower-hackathon                         |
+| Submission body       | [`docs/SUBMISSION_LABLAB.md`](SUBMISSION_LABLAB.md)                                  |
+| Architecture          | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)                                            |
+| Video script          | [`docs/VIDEO_SCRIPT_90S.md`](VIDEO_SCRIPT_90S.md)                                    |
+| Feature catalogue     | [`docs/FEATURES.md`](FEATURES.md)                                                    |
+| Live demo screenshots | [`docs/assets/live-demo-trace.png`](assets/live-demo-trace.png), [`docs/assets/gemini-reliability-judge.png`](assets/gemini-reliability-judge.png) |

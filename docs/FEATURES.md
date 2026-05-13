@@ -92,7 +92,7 @@ Planner and every Worker turn, and computes
 - **Jury impact:** **Business** + **Sponsors (Google)** — every
   enterprise buyer asks "what does it cost per run?" before they ask
   "does it work?". We answer both in the same JSON response. Last
-  smoke: 11 453 tokens, $0.001001.
+  smoke (Lot 5 FULL, post re-provision): 16 322 tokens, $0.001424.
 - **Source:** [`runner/app/llm/gemini_client.py`](../runner/app/llm/gemini_client.py)
   (`_read_usage`),
   [`runner/app/orchestrator.py`](../runner/app/orchestrator.py)
@@ -173,11 +173,17 @@ safe to retry. Same flags on the Bash sibling for Linux/macOS.
 ## 12. Vercel proxy bridge (LIVE)
 
 `/api/runner-proxy` accepts a JSON body, forwards to
-`http://140.82.35.52/run-agent`, enforces an 85 s
+`http://136.244.89.159/run-agent` (the post Lot 5 FULL Vultr VM),
+injects the `x-runner-secret` shared-secret header via
+`src/lib/runner/auth.ts::runnerHeaders()`, enforces an 85 s
 `AbortSignal.timeout`, and shapes upstream errors into structured
 JSON (`UPSTREAM_RUNNER_ERROR`, `UPSTREAM_INVALID_JSON`,
 `UPSTREAM_FETCH_FAILED`). `RUNNER_URL` is `.trim()`-ed to defend
-against CRLF injection.
+against CRLF injection. The new SSE-aware `/api/arcadeops/run` route
+wraps the same call as a `ReadableStream<Uint8Array>` of typed frames
+(`phase_change`, `step`, `tool_call`, `observability`, `result`,
+`done`) so the `/control-tower` page renders live without any UI
+component change.
 
 - **Jury impact:** **Technical** + **Sponsors (Vercel)** — clean
   edge → origin pattern, no secrets cross the boundary, error
@@ -218,10 +224,13 @@ The Vercel `/api/arcadeops/run` route degrades gracefully when any of
 `ARCADEOPS_API_BASE_URL`, `ARCADEOPS_DEMO_TOKEN`,
 `ARCADEOPS_DEMO_AGENT_ID` is missing — it returns a single-frame SSE
 error rather than crashing. The Vercel `/api/runner-proxy` route uses
-`process.env.RUNNER_URL ?? "http://140.82.35.52"` with a `.trim()`
+`process.env.RUNNER_URL ?? "http://136.244.89.159"` with a `.trim()`
 defense. The Vultr runner `runner/.env.example` keeps
 `GEMINI_API_KEY` empty so a fresh clone always starts in fixture
-mode rather than crashing on a missing key.
+mode rather than crashing on a missing key. The runner's
+`x-runner-secret` middleware is itself gated by
+`RUNNER_REQUIRE_SECRET` (off by default) so a fresh local clone keeps
+running without setting up the shared secret.
 
 - **Jury impact:** **Technical** — defense in depth at config time.
   No "you forgot to set X" 500.
@@ -241,6 +250,35 @@ Dockerfile), exposes a `HEALTHCHECK` baked into the image (probes
   'main.py']" demo.
 - **Source:** [`runner/Dockerfile`](../runner/Dockerfile),
   [`runner/docker-compose.yml`](../runner/docker-compose.yml).
+
+## 18. Runner shared-secret middleware (`x-runner-secret`)
+
+The FastAPI runner ships an `enforce_runner_secret` middleware that
+compares the inbound `x-runner-secret` header against
+`RUNNER_SECRET` using `hmac.compare_digest` — constant-time, no
+shape-leak. The kill-switch env var `RUNNER_REQUIRE_SECRET=1` toggles
+enforcement on; with the switch off, the runner stays
+pass-through so a fresh local clone is one command away from a green
+`/health` probe. Public paths (`/health`, `/docs`, `/openapi.json`,
+`/redoc`, optionally `/_diag` when `RUNNER_DIAG_ENABLED=1`) bypass the
+gate so external probes still work. On the Vercel side,
+`src/lib/runner/auth.ts` centralises `runnerHeaders()` and
+`runnerUrl()` so every server-side fetch injects the secret
+atomically. Smoke triple from the production runner (Lot 5 FULL
+B-deploy-1): no header → `401 missing_runner_secret`, wrong header →
+`401 invalid_runner_secret`, correct header → `200`.
+
+- **Jury impact:** **Technical** + **Sponsors (Vultr)** — the cheap
+  $5/mo Vultr VM is not "trust the IP allowlist" surface anymore. It
+  is a real mutual-auth gateway with a kill-switch, an audit trail,
+  and constant-time comparison. Nobody on the open Internet can spend
+  a Gemini token in our name.
+- **Source:** [`runner/app/main.py`](../runner/app/main.py)
+  (`enforce_runner_secret`),
+  [`src/lib/runner/auth.ts`](../src/lib/runner/auth.ts)
+  (`runnerHeaders`, `runnerUrl`),
+  [`runner/.env.example`](../runner/.env.example),
+  [`scripts/vultr-cloud-init.yaml.template`](../scripts/vultr-cloud-init.yaml.template).
 
 ## 17. Frontend deterministic gate engine + verdict consistency
 

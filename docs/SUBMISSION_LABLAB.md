@@ -13,10 +13,11 @@ Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can 
 ArcadeOps Control Tower turns every multi-agent run into an auditable
 trace and applies non-negotiable policy gates before anything risky
 ever ships. Live, end-to-end: a Planner + Worker built on Google
-Gemini 2.5 Flash, hosted on a $5/month Vultr VM in Frankfurt, with a
-Vercel frontend that proves the pipeline in one curl. Verdict
-`BLOCKED` on a real prompt-injection scenario in 17.6 seconds and
-$0.001.
+Gemini 2.5 Flash, hosted on a $5/month Vultr VM in Frankfurt behind an
+`x-runner-secret` shared-secret gate, with a Vercel `/control-tower`
+page that streams the multi-agent trace over SSE in real time. Verdict
+`BLOCKED` on a real prompt-injection scenario in 23.44 seconds and
+$0.0014.
 
 ## Long description
 
@@ -51,12 +52,18 @@ trace and applies a layered gate before it can hit production:
 The pipeline runs across two clouds with one shared secret model:
 
 - **Frontend (Vercel)** — Next.js 16 App Router, React 19, Tailwind v4.
-  The `/api/runner-proxy` Node.js function is the LIVE bridge to the
-  runner. The proxy never sees `GEMINI_API_KEY`.
+  The `/control-tower` page streams a live trace via SSE through
+  `/api/arcadeops/run`; the `/api/runner-proxy` Node.js function is
+  the plain-JSON LIVE bridge kept for debugging and external tooling.
+  Neither route ever sees `GEMINI_API_KEY`; both inject the
+  `x-runner-secret` shared-secret header into the upstream call.
 - **Runner (Vultr)** — FastAPI on Python 3.12, Docker container,
   non-root user, Caddy reverse proxy on port 80, UFW locked to
   `22/80/443`. One $5/month `vc2-1c-2gb` VM in Frankfurt
-  (`140.82.35.52`).
+  (`136.244.89.159`), re-provisioned via cloud-init at the end of the
+  hackathon to add an `enforce_runner_secret` middleware
+  (kill-switch `RUNNER_REQUIRE_SECRET=1`, `hmac.compare_digest`-based
+  comparison).
 - **LLM (Google AI Studio)** — `gemini-2.5-flash`, called only from
   inside the Vultr VM.
 
@@ -71,21 +78,30 @@ paying customers.
 
 ### Sponsors integration — proven, not promised
 
-Numbers below come from a real `2026-05-13` smoke against production
-(run id `b06cb0f8d64143f8ad52dc780528e74a`):
+Numbers below come from the **post Lot 5 FULL** `2026-05-13` smoke
+against production (run id `1f97ad20ab8f47949d77913e57817d0f`,
+streamed live through `/api/arcadeops/run` SSE and re-verified via
+the plain-JSON `/api/runner-proxy` route):
 
-| Metric                  | Value                                              |
-| ----------------------- | -------------------------------------------------- |
-| HTTP status             | 200                                                |
-| Wall-clock latency      | 17.6 s (Vercel → Vultr → Gemini → return)          |
-| Gemini tokens consumed  | 11 453                                             |
-| Cost per run            | $0.001001                                          |
-| Verdict                 | BLOCKED (3 policy gates triggered)                 |
-| Steps in trace          | 7 (1 PLANNER + 5 tool calls + 1 conclusion)        |
-| Distinct tools used     | 5 (`crm.lookup`, `kb.search`, `email.draft`, `approval.request`, `audit.log`) |
-| `is_mocked`             | `false` — LIVE Gemini, no fixture fallback         |
-| Runner host             | Vultr Cloud Compute · `vc2-1c-2gb` · `fra` · $5/mo |
-| Frontend host           | Vercel · USA edge                                  |
+| Metric                  | Value                                                                      |
+| ----------------------- | -------------------------------------------------------------------------- |
+| HTTP status             | 200                                                                        |
+| Wall-clock latency      | 23.44 s (Vercel → Vultr → Gemini → SSE return)                             |
+| Gemini tokens consumed  | 16 322                                                                     |
+| Cost per run            | $0.001424                                                                  |
+| Verdict                 | BLOCKED (3 policy gates triggered)                                         |
+| Steps in trace          | 8 (1 PLANNER planning + 6 WORKER tool_call + 1 WORKER conclusion)          |
+| Tool calls              | 7 (`kb.search`, `crm.lookup`, `policy.check`, `email.draft` ×2, `approval.request`, `audit.log`) |
+| Runner auth             | `x-runner-secret` middleware (kill-switch `RUNNER_REQUIRE_SECRET=1`) — smoke triple **401/401/200** |
+| `is_mocked`             | `false` — LIVE Gemini, no fixture fallback                                 |
+| Runner host             | Vultr Cloud Compute · `vc2-1c-2gb` · `fra` · `136.244.89.159` · $5/mo      |
+| Frontend host           | Vercel · USA edge                                                          |
+
+Live UI proof:
+
+![Live demo trace](assets/live-demo-trace.png)
+
+![Gemini reliability judge](assets/gemini-reliability-judge.png)
 
 ## Key features
 
@@ -116,8 +132,17 @@ Numbers below come from a real `2026-05-13` smoke against production
 - **Idempotent provisioning CLI** — `vultr-provision.ps1` supports
   `-DryRun`, `-Force`, `-CloudInitPath`, persists state to
   `.vultr-state.json`.
-- **Live demo in one curl** — `POST /api/runner-proxy` returns a full
-  multi-agent trace JSON in 17.6 s, no auth required.
+- **Clickable live demo on `/control-tower`** — the Next.js page
+  streams the multi-agent trace over SSE in real time (phase pills,
+  step timeline, tool calls, Gemini reliability judge, BLOCKED
+  verdict), no setup required. Plain-JSON `/api/runner-proxy` still
+  available as a one-curl fallback for jury reviewers who prefer raw
+  evidence.
+- **Mutual-auth runner gateway** — FastAPI middleware
+  `enforce_runner_secret` validates an `x-runner-secret` header with
+  `hmac.compare_digest`; kill-switch `RUNNER_REQUIRE_SECRET=1`
+  enforces, `/health`/`/docs`/`/openapi.json`/`/redoc` stay public for
+  cloud probes.
 
 ## Tech stack
 
@@ -152,7 +177,8 @@ Numbers below come from a real `2026-05-13` smoke against production
 ## Sponsors integration — Vultr
 
 - One Cloud Compute VM, `vc2-1c-2gb` plan, Frankfurt region,
-  $5/month, public IPv4 `140.82.35.52`.
+  $5/month, public IPv4 `136.244.89.159` (re-provisioned during Lot 5
+  FULL B-deploy-1 to swap in the `x-runner-secret` middleware).
 - Cloud-init template (`scripts/vultr-cloud-init.yaml.template`)
   installs Docker, Caddy, UFW, clones the repo, writes
   `/opt/arcadeops/.env` with `0600` perms, runs `docker compose up`
@@ -166,9 +192,20 @@ Numbers below come from a real `2026-05-13` smoke against production
 
 ## Live demo URL
 
-https://arcadeops-control-tower-hackathon.vercel.app
+**Primary (clickable, no setup)**:
+<https://arcadeops-control-tower-hackathon.vercel.app/control-tower>
 
-One-shot live mission:
+Open the page, click the green **⚡ Run live with ArcadeOps backend —
+Gemini + Vultr** button, watch the SSE timeline + tool calls + verdict
+stream in. Below are the two reference screenshots used in the pitch
+pack:
+
+![Live demo trace](assets/live-demo-trace.png)
+
+![Gemini reliability judge](assets/gemini-reliability-judge.png)
+
+**Secondary (one curl, plain JSON, for jury reviewers who want raw
+evidence)**:
 
 ```bash
 curl -sS -X POST \
@@ -177,10 +214,10 @@ curl -sS -X POST \
   -d '{"mission":"VIP customer threatens to churn after SLA breach"}' | jq .
 ```
 
-Health check on the runner:
+Health check on the runner (public, no `x-runner-secret` required):
 
 ```bash
-curl http://140.82.35.52/health
+curl http://136.244.89.159/health
 ```
 
 ## GitHub URL

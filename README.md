@@ -51,9 +51,10 @@ curl -sS -X POST \
   -d '{"mission":"VIP customer threatens to churn after SLA breach"}'
 ```
 
-Last smoke (Lot 5 FULL, `2026-05-13`) — `HTTP 200`, `~12-22 s` wall
-clock, `~11 000` Gemini tokens, `~$0.001` total cost, verdict
-`BLOCKED` (or `SHIP` for `safe_research` scenario), `is_mocked: false`.
+Last smoke (Lot 5 FULL, `2026-05-13`, post re-provision) — `HTTP 200`,
+`23.44 s` wall-clock, `16 322` Gemini tokens, `$0.001424` total cost,
+verdict `BLOCKED` (3 policy gates), 8 trace steps, 7 tool calls,
+`is_mocked: false`. Run id `1f97ad20ab8f47949d77913e57817d0f`.
 
 ### Architecture (Lot 5 FULL hardening)
 
@@ -134,8 +135,9 @@ diagrams see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
   `BLOCKED` verdict — no destructive CRM write, no outbound email, no
   prompt-injected payload reaches a real system.
 - **Live proof, not slideware.** Every figure in this README comes from
-  a real `2026-05-13` smoke against production: 17.6 s wall-clock,
-  11 453 Gemini tokens, $0.001001 per run.
+  a real `2026-05-13` smoke against production (post Lot 5 FULL
+  re-provision): 23.44 s wall-clock, 16 322 Gemini tokens, $0.001424
+  per run, 8 trace steps, 7 tool calls, `BLOCKED` verdict.
 - **Sponsor-native.** The architecture is "Gemini does the hard
   reasoning, Vultr runs the workload, Vercel ships the UI" — each
   sponsor is doing exactly what they are best at, not a token logo on a
@@ -223,9 +225,11 @@ The deployed pipeline is a **two-cloud setup with one shared secret model**:
   Node.js route. The proxy strips CRLF from `RUNNER_URL`, enforces an
   85 s `AbortSignal.timeout`, and never sees `GEMINI_API_KEY`.
 - **Vultr** runs the FastAPI multi-agent runner inside Docker on a
-  single `vc2-1c-2gb` VM in Frankfurt (`140.82.35.52`). UFW only opens
+  single `vc2-1c-2gb` VM in Frankfurt (`136.244.89.159`). UFW only opens
   22/80/443. Caddy reverse-proxies port 80 to the runner on
-  `127.0.0.1:8000`.
+  `127.0.0.1:8000`. A FastAPI middleware enforces an `x-runner-secret`
+  shared-secret header (kill-switch `RUNNER_REQUIRE_SECRET=1`), so
+  unauthenticated callers get a clean 401 without ever touching Gemini.
 - **Google Gemini API** is reached only from Vultr. The key is injected
   via cloud-init at provisioning time and lives in
   `/opt/arcadeops/.env` with `0600` perms.
@@ -254,7 +258,7 @@ and [`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
   `constraints`).
 - **Cost tracking** is computed from `response.usage_metadata`
   (`prompt_token_count`, `candidates_token_count`) using the published
-  `gemini-2.5-flash` rates. Last smoke: 11 453 tokens, $0.001001.
+  `gemini-2.5-flash` rates. Last smoke: 16 322 tokens, $0.001424.
 - **Resilience**: per-call wall-clock timeout (30 s), exponential
   backoff `[1s, 2s]`, transient-only retry classification, tool
   hallucinations gracefully degraded into a structured `unknown_tool`
@@ -263,7 +267,8 @@ and [`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
 ### Vultr · Cloud Compute
 
 - **Hosting** — single `vc2-1c-2gb` VM in `fra` (Frankfurt) at
-  `140.82.35.52`, $5/month.
+  `136.244.89.159`, $5/month (re-provisioned via cloud-init during
+  Lot 5 FULL Mission B-deploy-1).
 - **Cloud-init automated provisioning** — see
   [`scripts/vultr-cloud-init.yaml.template`](scripts/vultr-cloud-init.yaml.template).
   The template installs Docker, Caddy, UFW, clones the repo, writes
@@ -278,20 +283,25 @@ and [`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
 
 ## Roadmap (post-hackathon)
 
-1. **Lot 5 FULL bridge** — replace the dual `/api/runner-proxy` +
-   `/api/arcadeops/run` paths with a unified Server-Sent Events stream
-   so the frontend renders trace events as they arrive.
-2. **Persistent runs** — wire `/runs/{run_id}` to a small SQLite or
+1. **Persistent runs** — wire `/runs/{run_id}` to a small SQLite or
    Vultr Object Storage backend so traces survive a runner restart.
-3. **MCP-native tools** — expose the 10 mocked tools through a real MCP
+2. **MCP-native tools** — expose the 10 mocked tools through a real MCP
    server inside the runner (the registry already declares
    `MCP_COMPATIBLE` source for `risk.scan`).
-4. **Multi-region runners** — add `-Region` flag to
+3. **Multi-region runners** — add `-Region` flag to
    `vultr-provision.ps1` and route from Vercel to the closest healthy
    runner.
-5. **Real approval workflow** — turn `approval.request` into a real
+4. **Real approval workflow** — turn `approval.request` into a real
    webhook + UI inbox so a human can flip a `BLOCKED` run to `SHIP` in
    one click, with full audit trail.
+5. **Secret rotation playbook** — automate `RUNNER_SECRET` rotation
+   between the Vultr cloud-init slot and Vercel env vars without
+   downtime.
+
+> ✅ **Lot 5 FULL — landed.** `/api/arcadeops/run` is now an SSE compat
+> layer over the Vultr runner, `x-runner-secret` middleware enforces
+> shared-secret auth (kill-switch `RUNNER_REQUIRE_SECRET=1`), and the
+> `/control-tower` page renders the trace live from real Gemini frames.
 
 ---
 

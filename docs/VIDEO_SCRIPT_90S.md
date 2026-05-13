@@ -17,21 +17,31 @@
 - **One terminal prepared** (PowerShell or any shell with `curl` + `jq`).
 - **VS Code** open on `runner/app/agents/worker.py` and
   `src/lib/control-tower/policy-gates.ts` for the code cut-aways.
-- Pre-warm the Vultr runner once (`curl http://140.82.35.52/health`)
+- Pre-warm the Vultr runner once (`curl http://136.244.89.159/health`)
   to avoid a cold-start in scene 3.
 
 ## Asset checklist (capture before recording)
 
-| File                      | Subject                                                             |
-| ------------------------- | ------------------------------------------------------------------- |
-| `01_hero.png`             | Vercel UI hero with the tagline and "Run mission" CTA               |
-| `02_problem.png`          | Slide / Figma frame: "Agents are powerful. Production is dangerous." |
-| `03_curl.png`             | Terminal mid-curl with the `runner-proxy` request                   |
-| `04_trace.png`            | UI evidence timeline showing PLANNER + WORKER steps                 |
-| `05_verdict.png`          | UI verdict card showing `BLOCKED` + 3 policy gates                  |
-| `06_costcard.png`         | UI panel highlighting `11 453 tokens` · `$0.001001` · `17.6 s`      |
-| `07_arch.png`             | Mermaid architecture from `docs/ARCHITECTURE.md` exported as PNG    |
-| `08_provision.png`        | `scripts/vultr-provision.ps1 -DryRun` output                        |
+| File                      | Subject                                                                  |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `01_hero.png`             | Vercel UI hero with the tagline and "Run live with ArcadeOps" CTA        |
+| `02_problem.png`          | Slide / Figma frame: "Agents are powerful. Production is dangerous."     |
+| `03_curl.png`             | Terminal mid-curl with the `runner-proxy` request (debug path)           |
+| `04_trace.png`            | UI evidence timeline showing PLANNER + WORKER steps (see `docs/assets/live-demo-trace.png`) |
+| `05_verdict.png`          | UI verdict card showing `BLOCKED` + 3 policy gates                       |
+| `06_costcard.png`         | UI panel highlighting `16 322 tokens` · `$0.001424` · `23.44 s`          |
+| `07_arch.png`             | Mermaid architecture from `docs/ARCHITECTURE.md` exported as PNG         |
+| `08_provision.png`        | `scripts/vultr-provision.ps1 -DryRun` output                             |
+| `09_judge.png`            | Gemini reliability judge panel (see `docs/assets/gemini-reliability-judge.png`) |
+
+> Two reference screenshots already shipped in the repo are reusable
+> as cuts in scenes 3 and 4:
+>
+> - [`docs/assets/live-demo-trace.png`](assets/live-demo-trace.png) —
+>   the `/control-tower` page mid-run with timeline, tool calls and
+>   `BLOCKED` verdict.
+> - [`docs/assets/gemini-reliability-judge.png`](assets/gemini-reliability-judge.png) —
+>   the Gemini reliability judge panel with the structured verdict.
 
 ---
 
@@ -59,10 +69,10 @@
 
 | Field         | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **VO (EN)**   | "I'll prove it in one curl. Live mission to the Vercel proxy: a VIP customer threatens to churn after an SLA breach. Vercel forwards to a FastAPI runner on Vultr Frankfurt. The Planner produces a JSON plan with Gemini. The Worker calls real tools through Gemini function calling. Seven steps later, ArcadeOps' three policy gates fire: no destructive CRM write, no outbound email, prompt injection blocked. Verdict: BLOCKED — 17.6 seconds, 11,453 tokens, one-tenth of a cent. The agent did its job. We refused to ship its output." |
-| **VO (FR support)** | *« Je le prouve en un curl. Mission live envoyée au proxy Vercel : un client VIP menace de churn après une violation de SLA. Vercel forwarde vers un runner FastAPI sur Vultr Francfort. Le Planner sort un plan JSON via Gemini. Le Worker appelle de vrais outils via le function calling Gemini. Sept étapes plus tard, les trois policy gates ArcadeOps tombent : pas d'écriture CRM destructive, pas d'email sortant sans review, prompt injection bloqué. Verdict : BLOCKED — 17,6 secondes, 11 453 tokens, un dixième de cent. L'agent a fait son job. On a refusé de shipper son output. »* |
-| **On-screen** | (a) 0:25 → 0:30 — terminal foreground, type the `curl` command (already in clipboard, just paste). (b) 0:30 → 0:38 — switch to the Vercel UI, watch the `EventTimeline` populate live. (c) 0:38 → 0:45 — zoom on the verdict card showing `BLOCKED` and the 3 policy gates. (d) 0:45 → 0:50 — pull up the `ToolCallCard` for `crm.lookup` and highlight the prompt-injected `customer_note`.                                                                                                                                                                          |
-| **Captions** (rolling)| `POST /api/runner-proxy` · `is_mocked: false` · `model: gemini-2.5-flash` · `verdict: BLOCKED` · `tokens_used: 11453` · `cost_usd: 0.001001` · `run_id: b06cb0f8…`                                                                                                                                                                                                                                                                                          |
+| **VO (EN)**   | "I'll prove it live. Open the Control Tower page, click the green Run-live button. Vercel injects an `x-runner-secret` header and forwards the mission to a FastAPI runner on Vultr Frankfurt. The Planner produces a JSON plan with Gemini. The Worker calls real tools through Gemini function calling. Eight steps and seven tool calls later, ArcadeOps' three policy gates fire: no destructive CRM write, no outbound email, prompt injection blocked. Verdict: BLOCKED — 23.44 seconds, 16,322 tokens, one-seventh of a cent. The agent did its job. We refused to ship its output." |
+| **VO (FR support)** | *« Je le prouve en live. J'ouvre la page Control Tower, je clique sur le bouton vert « Run live ». Vercel injecte un header `x-runner-secret` et forwarde la mission vers un runner FastAPI sur Vultr Francfort. Le Planner sort un plan JSON via Gemini. Le Worker appelle de vrais outils via le function calling Gemini. Huit étapes et sept appels d'outil plus tard, les trois policy gates ArcadeOps tombent : pas d'écriture CRM destructive, pas d'email sortant sans review, prompt injection bloqué. Verdict : BLOCKED — 23,44 secondes, 16 322 tokens, un septième de cent. L'agent a fait son job. On a refusé de shipper son output. »* |
+| **On-screen** | (a) 0:25 → 0:32 — focus the `/control-tower` page, click the green Run-live CTA, let the phase pills flip in real time (visual = `docs/assets/live-demo-trace.png`). (b) 0:32 → 0:40 — zoom on the `EventTimeline` populating live with `kb.search`, `crm.lookup`, `policy.check`, `email.draft` (×2), `approval.request`, `audit.log`. (c) 0:40 → 0:45 — zoom on the verdict card showing `BLOCKED` and the 3 policy gates. (d) 0:45 → 0:50 — pull up the `ToolCallCard` for `crm.lookup` and highlight the prompt-injected `customer_note`. |
+| **Captions** (rolling)| `Live /control-tower SSE` · `is_mocked: false` · `model: gemini-2.5-flash` · `verdict: BLOCKED` · `tokens_used: 16322` · `cost_usd: 0.001424` · `run_id: 1f97ad20…` · `x-runner-secret: 200`                                                                                                                                                                                                                                                  |
 | **Transition** | Zoom out to architecture diagram.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ## Scene 4 — Sponsors integration (0:50 → 1:10) · 20 s
@@ -71,7 +81,7 @@
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **VO (EN)**   | "Each sponsor does what it's best at. Gemini 2.5 Flash powers the Planner with structured JSON output and the Worker with native function calling — ten typed tools, full anti-injection, real cost tracking from `usage_metadata`. Vultr hosts the runner: one Cloud Compute VM in Frankfurt, five dollars a month, cloud-init provisioning, zero SSH required to ship a fresh node. Vercel ships the UI and the proxy at the edge — secrets never leave the VM." |
 | **VO (FR support)** | *« Chaque sponsor fait ce qu'il fait de mieux. Gemini 2.5 Flash anime le Planner en sortie JSON structurée et le Worker en function calling natif — dix outils typés, anti-injection complet, tracking de coût réel via `usage_metadata`. Vultr héberge le runner : une VM Cloud Compute à Francfort, 5 dollars par mois, provisioning par cloud-init, zéro SSH pour livrer un nouveau node. Vercel ship l'UI et le proxy en edge — les secrets ne quittent jamais la VM. »* |
-| **On-screen** | (a) 0:50 → 0:55 — architecture diagram exported from `docs/ARCHITECTURE.md` (`07_arch.png`) with Vercel/Vultr/Gemini labels highlighted in sequence. (b) 0:55 → 1:02 — code cut-away on `runner/app/agents/worker.py` (function-calling loop) for 4 s, then `runner/app/llm/gemini_client.py` (retry/timeout) for 3 s. (c) 1:02 → 1:10 — `scripts/vultr-provision.ps1 -DryRun` output (`08_provision.png`), then health check `curl http://140.82.35.52/health` returning 200.                                                              |
+| **On-screen** | (a) 0:50 → 0:55 — architecture diagram exported from `docs/ARCHITECTURE.md` (`07_arch.png`) with Vercel/Vultr/Gemini labels highlighted in sequence. (b) 0:55 → 1:02 — code cut-away on `runner/app/agents/worker.py` (function-calling loop) for 3 s, then `runner/app/main.py::enforce_runner_secret` (middleware) for 2 s, then `src/lib/runner/auth.ts::runnerHeaders` (Vercel side) for 2 s. (c) 1:02 → 1:10 — `scripts/vultr-provision.ps1 -DryRun` output (`08_provision.png`), then health check `curl http://136.244.89.159/health` returning 200, then smoke triple flash: `401 missing_runner_secret` → `401 invalid_runner_secret` → `200`. |
 | **Captions**  | `Gemini · gemini-2.5-flash` · `Vultr · vc2-1c-2gb · fra` · `cloud-init · UFW 22/80/443` · `Vercel · /api/runner-proxy`                                                                                                                                                                                                                                                                                                                                                                                                  |
 | **Transition** | Cross-fade to business-value scene.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 

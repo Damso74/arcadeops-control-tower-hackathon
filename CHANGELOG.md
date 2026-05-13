@@ -8,24 +8,72 @@ build-window-relative; commit hashes link back to `git log`.
 The hackathon was structured as **eight Lots** (work batches), each
 with its own pass/fail acceptance gate.
 
+## [Lot 5 FULL] · 2026-05-13 · SSE bridge + x-runner-secret hardening — LIVE PASS
+
+- **Mission A — SSE compat layer.** `/api/arcadeops/run` rewritten as a
+  proxy `ReadableStream<Uint8Array>` that streams typed SSE frames
+  (`phase_change`, `step`, `tool_call`, `observability`, `result`,
+  `done`) sourced from the Vultr runner. Zero changes required on the
+  React side — `EventTimeline`, `GeminiJudgePanel`, `PolicyGatesPanel`
+  and `ToolCallCard` consume the frames as-is. Strategy A1 retained
+  (`4aa869f`).
+- **Mission B — Shared-secret auth.** FastAPI middleware
+  `enforce_runner_secret` validates an `x-runner-secret` header with
+  `hmac.compare_digest`; kill-switch `RUNNER_REQUIRE_SECRET=1`
+  enforces, pass-through when off. `/health`, `/docs`, `/openapi.json`,
+  `/redoc` and `/_diag` stay public for cloud probes (`1294d66`,
+  `e0cadcb`, `a266624`). `/_diag` is itself env-gated via
+  `RUNNER_DIAG_ENABLED=1` (off by default) after Lot 5 FULL hardening.
+- **Vercel-side helper.** `src/lib/runner/auth.ts` centralises
+  `runnerHeaders()` and `runnerUrl()` so every server-side fetch
+  injects the secret atomically.
+- **B-deploy-1 — VM re-provisioned via cloud-init.** New public IPv4
+  `136.244.89.159` (Frankfurt, `vc2-1c-2gb`); Vercel `RUNNER_URL`
+  updated atomically before flipping the kill-switch on. The old
+  `140.82.35.52` instance was destroyed cleanly.
+- **Smoke triple (auth gate).** From the new VM:
+  - `curl /run-agent` (no header) → `401 missing_runner_secret`.
+  - `curl /run-agent -H 'x-runner-secret: wrong'` → `401
+    invalid_runner_secret`.
+  - `curl /run-agent -H 'x-runner-secret: <RUNNER_SECRET>'` → `200`.
+- **Smoke browser MCP.** `/control-tower` rendered the live SSE trace
+  end-to-end (DOM timeline + tool calls + Gemini judge panel + BLOCKED
+  verdict). Two screenshots captured for the pitch pack
+  (`docs/assets/live-demo-trace.png`,
+  `docs/assets/gemini-reliability-judge.png`). Console clean, zero
+  leak of `GEMINI_API_KEY`.
+- **Smoke prod proof on `2026-05-13` evening** (run id
+  `1f97ad20ab8f47949d77913e57817d0f`):
+  - HTTP 200
+  - upstream wall-clock 23.44 s end-to-end
+  - 16 322 Gemini tokens consumed
+  - $0.001424 cost
+  - 8 trace steps (1 PLANNER planning + 6 WORKER tool_call + 1 WORKER
+    conclusion)
+  - 7 tool calls across 6 distinct tools: `kb.search`, `crm.lookup`,
+    `policy.check`, `email.draft` (×2), `approval.request`, `audit.log`
+  - verdict `BLOCKED` (3 policy gates triggered)
+  - `is_mocked: false` — LIVE Gemini, no fixture fallback
+- **PASS gate** — Vercel can talk to Vultr Frankfurt LIVE end-to-end
+  with mutual auth, stream a real Gemini-driven trace through SSE, and
+  surface a `BLOCKED` verdict inside the `/control-tower` UI without
+  user setup.
+
 ## [Lot 4 minimal] · 2026-05-13 · Vercel proxy bridge — LIVE PASS
 
 - Added `/api/runner-proxy` Node.js route that forwards a JSON body to
-  `http://140.82.35.52/run-agent` and shapes upstream errors into
-  predictable JSON envelopes (`UPSTREAM_RUNNER_ERROR`,
-  `UPSTREAM_INVALID_JSON`, `UPSTREAM_FETCH_FAILED`,
-  `INVALID_JSON_BODY`, `MISSION_REQUIRED`).
+  `http://${RUNNER_URL}/run-agent` (now `136.244.89.159` after Lot 5
+  FULL B-deploy-1) and shapes upstream errors into predictable JSON
+  envelopes (`UPSTREAM_RUNNER_ERROR`, `UPSTREAM_INVALID_JSON`,
+  `UPSTREAM_FETCH_FAILED`, `INVALID_JSON_BODY`, `MISSION_REQUIRED`).
 - `RUNNER_URL` is `.trim()`-ed at module load (`d5430ce`) to defend
   against CRLF injection when env vars are pasted with stray newlines.
 - `AbortSignal.timeout(85_000)` aligns with Vercel `maxDuration: 90`
   to surface a clean timeout instead of a frozen function.
-- Smoke proof on `2026-05-13` (run id `b06cb0f8d64143f8ad52dc780528e74a`):
-  - HTTP 200
-  - upstream wall-clock 17 222 ms (≈ 17.6 s end-to-end)
-  - 11 453 Gemini tokens consumed
-  - $0.001001 cost
-  - verdict `BLOCKED` (3 policy gates triggered)
-  - `is_mocked: false` — LIVE Gemini, no fixture fallback
+- Original Lot 4 smoke (pre re-provision) on `2026-05-13` (run id
+  `b06cb0f8d64143f8ad52dc780528e74a`) hit the legacy
+  `140.82.35.52` VM — HTTP 200, ~17.6 s, ~11 453 tokens, ~$0.001,
+  verdict `BLOCKED`. Superseded by the Lot 5 FULL smoke above.
 - Reachability cross-check from check-host: 200 OK from Frankfurt
   (14 ms), Amsterdam (24 ms), San Francisco (275 ms), Tokyo (499 ms).
 - **PASS gate** — Vercel can talk to Vultr Frankfurt LIVE end-to-end,
@@ -49,10 +97,12 @@ with its own pass/fail acceptance gate.
 
 ## [Lot 3] · 2026-05-13 · Vultr VM provisioned LIVE
 
-- One Cloud Compute VM created in `fra` (Frankfurt) at IP
-  `140.82.35.52`, plan `vc2-1c-2gb`, $5/month.
-- Instance id `12c32476-a13f-4f0c-a1d4-e4845643b37e`, persisted to
-  `.vultr-state.json` so the provisioning CLI is idempotent.
+- First Cloud Compute VM created in `fra` (Frankfurt) at IP
+  `140.82.35.52`, plan `vc2-1c-2gb`, $5/month. Replaced by
+  `136.244.89.159` during Lot 5 FULL B-deploy-1; the new VM is now the
+  canonical runner.
+- Instance metadata persisted to `.vultr-state.json` so the
+  provisioning CLI is idempotent.
 - Health endpoint reachable from four continents (see
   `.smoke-checkhost-prod.json`).
 
@@ -145,27 +195,19 @@ through V5 in earlier weeks, included here for jury context:
 - **V5** — `feat/production-release-hardening` merged with
   deterministic verdict consistency (`095c793`).
 
-## [Lot 5 FULL] · in flight (parallel worker)
-
-The frontend ↔ runner bridge through Server-Sent Events is being
-rebuilt on a parallel branch. This pitch pack ships independently of
-that work; the Lot 5 FULL placeholder is documented here so jury
-reviewers can pick up the thread post-hackathon.
-
-- *(Tracked separately by the engineering worker — do not touch from
-  this docs branch.)*
-
 ---
 
 ## Hackathon timeline summary
 
-| Date         | Event                                                                  |
-| ------------ | ---------------------------------------------------------------------- |
-| 2026-05-13   | Lots 1, 1b, 2a, 2b, 3, 3b, 4 minimal landed end-to-end                 |
-| 2026-05-13   | First LIVE Gemini run via Vercel proxy — `BLOCKED` in 17.6 s, $0.001  |
-| 2026-05-13   | Pitch pack v1 (this changelog) opened on `docs/pitch-pack-v1`          |
-| `[TBD]`      | Demo video recorded per `docs/VIDEO_SCRIPT_90S.md`                     |
-| `[TBD]`      | Submission published on Lablab.ai                                      |
+| Date              | Event                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| 2026-05-13        | Lots 1, 1b, 2a, 2b, 3, 3b, 4 minimal landed end-to-end                               |
+| 2026-05-13 (PM)   | First LIVE Gemini run via Vercel proxy — `BLOCKED` in 17.6 s, $0.001 (legacy VM)     |
+| 2026-05-13 (eve.) | Lot 5 FULL landed — SSE bridge + `x-runner-secret`; VM re-provisioned to `136.244.89.159` |
+| 2026-05-13 (eve.) | Post-hardening smoke — `BLOCKED` in 23.44 s, 16 322 tokens, $0.001424                |
+| 2026-05-13 (eve.) | Pitch pack v1 mergeable on `docs/pitch-pack-v1` with synced numbers + screenshots    |
+| `[TBD]`           | Demo video recorded per `docs/VIDEO_SCRIPT_90S.md`                                   |
+| `[TBD]`           | Submission published on Lablab.ai                                                    |
 
 ---
 
