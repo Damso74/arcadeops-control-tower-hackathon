@@ -429,10 +429,11 @@ function Resolve-CloudInit {
     }
 
     $template = Get-Content -LiteralPath $Path -Raw
-    $marker = "__GEMINI_API_KEY__"
+    $geminiMarker = "__GEMINI_API_KEY__"
+    $secretMarker = "__RUNNER_SECRET__"
 
-    if ($template -notmatch [regex]::Escape($marker)) {
-        throw "Le fichier cloud-init '$Path' ne contient pas le marqueur '$marker' attendu."
+    if ($template -notmatch [regex]::Escape($geminiMarker)) {
+        throw "Le fichier cloud-init '$Path' ne contient pas le marqueur '$geminiMarker' attendu."
     }
 
     $key = $env:GEMINI_API_KEY
@@ -440,11 +441,26 @@ function Resolve-CloudInit {
         throw "GEMINI_API_KEY est vide dans l'environnement ; impossible de substituer le marqueur cloud-init."
     }
 
-    # Substitution stricte du marqueur (jamais loggée en clair).
-    $resolved = $template.Replace($marker, $key)
+    # Substitution stricte du marqueur Gemini (jamais loggée en clair).
+    $resolved = $template.Replace($geminiMarker, $key)
 
-    if ($resolved -match [regex]::Escape($marker)) {
-        throw "Marqueur '$marker' encore présent après substitution (corruption du template)."
+    if ($resolved -match [regex]::Escape($geminiMarker)) {
+        throw "Marqueur '$geminiMarker' encore présent après substitution (corruption du template)."
+    }
+
+    # Lot 5 FULL : substitution du secret runner si présent dans le template.
+    if ($template -match [regex]::Escape($secretMarker)) {
+        $runnerSecret = $env:RUNNER_SECRET
+        if ([string]::IsNullOrWhiteSpace($runnerSecret)) {
+            throw "RUNNER_SECRET est vide dans l'environnement ; impossible de substituer '$secretMarker'. Génère-le avec : python -c `"import secrets; print(secrets.token_hex(32))`""
+        }
+        if ($runnerSecret.Length -lt 32) {
+            throw "RUNNER_SECRET trop court ($($runnerSecret.Length) chars) ; exige >= 32 caractères pour entropie suffisante."
+        }
+        $resolved = $resolved.Replace($secretMarker, $runnerSecret)
+        if ($resolved -match [regex]::Escape($secretMarker)) {
+            throw "Marqueur '$secretMarker' encore présent après substitution."
+        }
     }
 
     # Vérification basique : la première ligne doit rester '#cloud-config'.

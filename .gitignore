@@ -66,3 +66,6 @@ runner/**/*.pyc
 # Smoke fixtures generated during prod proxying (Lot 4 / Lot 5)
 .smoke-*.json
 .smoke-*.log
+
+# Local-only Lot 5 FULL secrets — never commit, regenerate per-deploy.
+.runner-secret.local

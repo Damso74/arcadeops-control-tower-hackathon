@@ -21,6 +21,11 @@ write_files:
       GEMINI_API_KEY=__GEMINI_API_KEY__
       GEMINI_MODEL=gemini-2.5-flash
       ALLOWED_ORIGINS=https://arcadeops-control-tower-hackathon.vercel.app,http://localhost:3000
+      # Lot 5 FULL — kill-switch enforces shared-secret authentication on
+      # every non-public route. Set RUNNER_REQUIRE_SECRET=0 to revert to
+      # the pre-Lot-5 pass-through (debug only).
+      RUNNER_REQUIRE_SECRET=1
+      RUNNER_SECRET=__RUNNER_SECRET__
     owner: root:root
     permissions: '0600'
   - path: /etc/caddy/Caddyfile

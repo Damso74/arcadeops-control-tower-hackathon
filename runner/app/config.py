@@ -18,6 +18,16 @@ class Settings(BaseSettings):
     )
     runner_version: str = Field(default="0.1.0", alias="RUNNER_VERSION")
 
+    # Lot 5 FULL — kill-switch shared-secret authentication.
+    # When `runner_require_secret` is True, every request that is not
+    # /health must carry an `x-runner-secret` header matching
+    # `runner_secret`; otherwise the runner returns 401 (constant-time
+    # comparison via hmac.compare_digest in the middleware).
+    runner_require_secret: bool = Field(
+        default=False, alias="RUNNER_REQUIRE_SECRET"
+    )
+    runner_secret: str | None = Field(default=None, alias="RUNNER_SECRET")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
