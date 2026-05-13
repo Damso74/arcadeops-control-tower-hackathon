@@ -1,0 +1,50 @@
+#cloud-config
+# ArcadeOps Control Tower runner - Vultr cloud-init
+# Usage : copier en scripts/vultr-cloud-init.yaml, remplacer __GEMINI_API_KEY__,
+# puis recreer la VM via vultr-provision.ps1 avec -CloudInitPath param.
+# (Le param -CloudInitPath n'existe pas encore dans le script ; a ajouter au Lot 3b.)
+
+package_update: true
+package_upgrade: false  # gain de temps, pas critique pour hackathon
+
+packages:
+  - docker.io
+  - docker-compose-v2
+  - git
+  - curl
+  - ufw
+  - caddy
+
+write_files:
+  - path: /opt/arcadeops/.env
+    content: |
+      GEMINI_API_KEY=__GEMINI_API_KEY__
+      GEMINI_MODEL=gemini-2.5-flash
+      ALLOWED_ORIGINS=https://arcadeops-control-tower-hackathon.vercel.app,http://localhost:3000
+    owner: root:root
+    permissions: '0600'
+  - path: /etc/caddy/Caddyfile
+    content: |
+      :80 {
+          reverse_proxy 127.0.0.1:8000
+      }
+      # HTTPS sera active apres ajout d'un domaine custom (Lot 3c).
+    owner: root:root
+    permissions: '0644'
+
+runcmd:
+  - systemctl enable --now docker
+  - systemctl enable --now caddy
+  - mkdir -p /opt/arcadeops
+  - cd /opt/arcadeops && git clone https://github.com/Damso74/arcadeops-control-tower-hackathon.git repo
+  - cp /opt/arcadeops/.env /opt/arcadeops/repo/runner/.env
+  - cd /opt/arcadeops/repo/runner && docker compose up -d --build
+  - sleep 5
+  - curl -s http://127.0.0.1:8000/health > /var/log/arcadeops-health.log 2>&1
+  - systemctl reload caddy
+  - ufw allow 22/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+
+final_message: "ArcadeOps Control Tower runner ready. Test: curl http://$(curl -s ifconfig.me)/health"

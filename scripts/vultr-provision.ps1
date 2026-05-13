@@ -15,6 +15,7 @@ param(
     [string]$Plan = "",
     [string]$Hostname = "arcadeops-runner",
     [string]$SshKeyPath = "",
+    [string]$CloudInitPath = $null,
     [switch]$DryRun,
     [switch]$Force
 )
@@ -417,6 +418,50 @@ function Save-VultrState {
     Set-Content -LiteralPath $script:StatePath -Value $json -Encoding utf8
 }
 
+function Resolve-CloudInit {
+    param([string]$Path)
+
+    # Pas de cloud-init demandé : retour $null silencieux.
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "CloudInitPath introuvable : $Path"
+    }
+
+    $template = Get-Content -LiteralPath $Path -Raw
+    $marker = "__GEMINI_API_KEY__"
+
+    if ($template -notmatch [regex]::Escape($marker)) {
+        throw "Le fichier cloud-init '$Path' ne contient pas le marqueur '$marker' attendu."
+    }
+
+    $key = $env:GEMINI_API_KEY
+    if ([string]::IsNullOrWhiteSpace($key)) {
+        throw "GEMINI_API_KEY est vide dans l'environnement ; impossible de substituer le marqueur cloud-init."
+    }
+
+    # Substitution stricte du marqueur (jamais loggée en clair).
+    $resolved = $template.Replace($marker, $key)
+
+    if ($resolved -match [regex]::Escape($marker)) {
+        throw "Marqueur '$marker' encore présent après substitution (corruption du template)."
+    }
+
+    # Vérification basique : la première ligne doit rester '#cloud-config'.
+    $firstLine = ($resolved -split "`r?`n", 2)[0]
+    if ($firstLine.Trim() -ne "#cloud-config") {
+        throw "Première ligne inattendue dans cloud-init : '$firstLine' (attendu '#cloud-config')."
+    }
+
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($resolved)
+    $b64 = [System.Convert]::ToBase64String($bytes)
+
+    # Log explicitement non-sensible (longueur + 1ère ligne, jamais le contenu).
+    Write-Host "Cloud-init résolu : length_b64=$($b64.Length), first_line=$firstLine" -ForegroundColor Green
+
+    return $b64
+}
+
 try {
     $script:EffectiveApiKey = $ApiKey
 
@@ -431,7 +476,11 @@ try {
     Write-Host "Plan             : $resolvedPlan" -ForegroundColor Cyan
     Write-Host "Hostname/label   : $Hostname" -ForegroundColor Cyan
     Write-Host "DryRun           : $DryRun" -ForegroundColor Cyan
+    Write-Host "CloudInitPath    : $(if ([string]::IsNullOrWhiteSpace($CloudInitPath)) { '(none)' } else { $CloudInitPath })" -ForegroundColor Cyan
     Write-Host ""
+
+    # Résolution cloud-init en amont : valide le template + substitution même en mode dry-run.
+    $cloudInitB64 = Resolve-CloudInit -Path $CloudInitPath
 
     $picked = Find-RegionWithFallback -Preferred $resolvedRegionPref -Plan $resolvedPlan
     Write-Host "Région retenue   : $($picked.Id) ($($picked.Label))" -ForegroundColor Green
@@ -484,10 +533,26 @@ try {
         enable_ipv6        = $false
     }
 
+    # Injection user_data (cloud-init base64) si fourni. Vultr API : champ user_data en base64.
+    if (-not [string]::IsNullOrWhiteSpace($cloudInitB64)) {
+        $instanceBody.user_data = $cloudInitB64
+        Write-Host "user_data injecté dans le payload (length_b64=$($cloudInitB64.Length))." -ForegroundColor Green
+    }
+
     if ($DryRun) {
         Write-Host ""
         Write-Host "[DRY-RUN] Résumé (aucun POST/DELETE de mutation, hors GET déjà effectués) :" -ForegroundColor Yellow
-        $instanceBody | ConvertTo-Json -Depth 10 | Write-Host
+        # Masquage du user_data dans le dump de débogage : on n'expose JAMAIS la base64
+        # (elle décode vers le contenu cloud-init qui contient GEMINI_API_KEY en clair).
+        $debugBody = [ordered]@{}
+        foreach ($k in $instanceBody.Keys) {
+            if ($k -eq "user_data") {
+                $debugBody[$k] = "<base64 cloud-init redacted, length=$($instanceBody[$k].Length)>"
+            } else {
+                $debugBody[$k] = $instanceBody[$k]
+            }
+        }
+        $debugBody | ConvertTo-Json -Depth 10 | Write-Host
         Write-Host ""
         Write-Host "Sortie 0 (dry-run)." -ForegroundColor Green
         exit 0
