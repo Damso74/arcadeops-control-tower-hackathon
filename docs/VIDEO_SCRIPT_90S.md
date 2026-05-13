@@ -1,187 +1,145 @@
-# 90-second video script — ArcadeOps Control Tower
+# 90-second jury video — storyboard
 
-> Target: a single take, screen recording at 1920 × 1080, voice-over
-> in English, no editing other than trims and a 1-second logo title
-> card. Total length: **90 seconds**, hard cap 95 s.
+> **Goal:** in 90 seconds, prove that `Gemini runs the agent · Vultr
+> executes the workflow · ArcadeOps decides if it can ship` is real,
+> live and clickable. Bilingual notes — primary VO is **English**,
+> French support text in italics underneath each scene for the recording
+> session.
+
+## Recording setup
+
+- **Resolution:** 1920×1080, 30 fps, MP4 H.264, AAC audio.
+- **Capture:** OBS or Loom screen-share at full resolution. Webcam
+  inset is optional and only used in scene 6.
+- **Two browser tabs prepared:**
+  1. https://arcadeops-control-tower-hackathon.vercel.app
+  2. https://github.com/Damso74/arcadeops-control-tower-hackathon
+- **One terminal prepared** (PowerShell or any shell with `curl` + `jq`).
+- **VS Code** open on `runner/app/agents/worker.py` and
+  `src/lib/control-tower/policy-gates.ts` for the code cut-aways.
+- Pre-warm the Vultr runner once (`curl http://136.244.89.159/health`)
+  to avoid a cold-start in scene 3.
+
+## Asset checklist (capture before recording)
+
+| File                      | Subject                                                                  |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `01_hero.png`             | Vercel UI hero with the tagline and "Run live with ArcadeOps" CTA        |
+| `02_problem.png`          | Slide / Figma frame: "Agents are powerful. Production is dangerous."     |
+| `03_curl.png`             | Terminal mid-curl with the `runner-proxy` request (debug path)           |
+| `04_trace.png`            | UI evidence timeline showing PLANNER + WORKER steps (see `docs/assets/live-demo-trace.png`) |
+| `05_verdict.png`          | UI verdict card showing `BLOCKED` + 3 policy gates                       |
+| `06_costcard.png`         | UI panel highlighting `16 322 tokens` · `$0.001424` · `23.44 s`          |
+| `07_arch.png`             | Mermaid architecture from `docs/ARCHITECTURE.md` exported as PNG         |
+| `08_provision.png`        | `scripts/vultr-provision.ps1 -DryRun` output                             |
+| `09_judge.png`            | Gemini reliability judge panel (see `docs/assets/gemini-reliability-judge.png`) |
+
+> Two reference screenshots already shipped in the repo are reusable
+> as cuts in scenes 3 and 4:
 >
-> Tagline to land verbally: **"A Gemini-powered production gate for
-> autonomous AI agents."**
->
-> Punchline to close: **"Gemini reasons on the trace. ArcadeOps
-> enforces the production gate."**
+> - [`docs/assets/live-demo-trace.png`](assets/live-demo-trace.png) —
+>   the `/control-tower` page mid-run with timeline, tool calls and
+>   `BLOCKED` verdict.
+> - [`docs/assets/gemini-reliability-judge.png`](assets/gemini-reliability-judge.png) —
+>   the Gemini reliability judge panel with the structured verdict.
 
 ---
 
-## Pre-flight (do before clicking record)
+## Scene 1 — Hook (0:00 → 0:10) · 10 s
 
-- [ ] Browser in **private / incognito** window.
-- [ ] Vercel deployment open in a fresh tab — `https://arcadeops-control-tower-hackathon.vercel.app/`.
-- [ ] `GEMINI_API_KEY` is configured on the deployment so the **Mode:
-      Live Gemini audit** pill shows up.
-- [ ] Cleared the URL bar to remove tracking params.
-- [ ] Browser zoom at 100%, dev tools closed, only one tab visible.
-- [ ] Notifications disabled (Do Not Disturb on macOS / Focus on Win).
-- [ ] OBS / ScreenFlow / QuickTime configured at 1920 × 1080 and
-      recording **system audio off, mic only**.
+| Field         | Value                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------------- |
+| **VO (EN)**   | "Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship."                        |
+| **VO (FR support)** | *« Gemini fait tourner l'agent. Vultr exécute le workflow. ArcadeOps décide s'il peut partir en prod. »* |
+| **On-screen** | Hero shot of `https://arcadeops-control-tower-hackathon.vercel.app` with the tagline overlay (`01_hero.png`).  |
+| **Lower third** | `arcadeops-control-tower-hackathon.vercel.app`                                                               |
+| **Transition** | Hard cut to scene 2 on the last word.                                                                         |
 
----
+## Scene 2 — Problem (0:10 → 0:25) · 15 s
 
-## Storyboard (timecoded)
+| Field         | Value                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **VO (EN)**   | "AI agents now write to CRMs, send customer emails, take refund decisions. The hard part is no longer building the agent — it's deciding when a multi-agent run is actually safe to ship. Most teams ship on faith." |
+| **VO (FR support)** | *« Les agents IA écrivent dans le CRM, envoient des mails clients, déclenchent des remboursements. Le vrai problème, ce n'est plus de construire l'agent — c'est de décider quand un run multi-agent peut vraiment partir en prod. Aujourd'hui, on ship à l'aveugle. »* |
+| **On-screen** | Wide split-screen: left side — Figma slide "Agents are powerful. Production is dangerous." (`02_problem.png`). Right side — quick montage of CRM dashboard, mail client, Slack alert (any rights-cleared B-roll or Figma mock).                                                                                                                                          |
+| **Caption**   | "Production gates are still missing for autonomous agents."                                                                                                                                                                                                                                                                                                            |
+| **Transition** | Smooth zoom into the terminal.                                                                                                                                                                                                                                                                                                                                          |
 
-### 0:00 – 0:05 — Title card / opening line (5 s)
+## Scene 3 — Solution, live demo (0:25 → 0:50) · 25 s
 
-- **Screen:** title card "ArcadeOps Control Tower — A Gemini-powered
-  production gate for autonomous AI agents." Black background, emerald
-  accent, no logo motion. Static for 3 s, fade out 2 s.
-- **Voice-over:**
-  > "ArcadeOps Control Tower — a Gemini-powered production gate for
-  > autonomous AI agents."
+| Field         | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **VO (EN)**   | "I'll prove it live. Open the Control Tower page, click the green Run-live button. Vercel injects an `x-runner-secret` header and forwards the mission to a FastAPI runner on Vultr Frankfurt. The Planner produces a JSON plan with Gemini. The Worker calls real tools through Gemini function calling. Eight steps and seven tool calls later, ArcadeOps' three policy gates fire: no destructive CRM write, no outbound email, prompt injection blocked. Verdict: BLOCKED — 23.44 seconds, 16,322 tokens, one-seventh of a cent. The agent did its job. We refused to ship its output." |
+| **VO (FR support)** | *« Je le prouve en live. J'ouvre la page Control Tower, je clique sur le bouton vert « Run live ». Vercel injecte un header `x-runner-secret` et forwarde la mission vers un runner FastAPI sur Vultr Francfort. Le Planner sort un plan JSON via Gemini. Le Worker appelle de vrais outils via le function calling Gemini. Huit étapes et sept appels d'outil plus tard, les trois policy gates ArcadeOps tombent : pas d'écriture CRM destructive, pas d'email sortant sans review, prompt injection bloqué. Verdict : BLOCKED — 23,44 secondes, 16 322 tokens, un septième de cent. L'agent a fait son job. On a refusé de shipper son output. »* |
+| **On-screen** | (a) 0:25 → 0:32 — focus the `/control-tower` page, click the green Run-live CTA, let the phase pills flip in real time (visual = `docs/assets/live-demo-trace.png`). (b) 0:32 → 0:40 — zoom on the `EventTimeline` populating live with `kb.search`, `crm.lookup`, `policy.check`, `email.draft` (×2), `approval.request`, `audit.log`. (c) 0:40 → 0:45 — zoom on the verdict card showing `BLOCKED` and the 3 policy gates. (d) 0:45 → 0:50 — pull up the `ToolCallCard` for `crm.lookup` and highlight the prompt-injected `customer_note`. |
+| **Captions** (rolling)| `Live /control-tower SSE` · `is_mocked: false` · `model: gemini-2.5-flash` · `verdict: BLOCKED` · `tokens_used: 16322` · `cost_usd: 0.001424` · `run_id: 1f97ad20…` · `x-runner-secret: 200`                                                                                                                                                                                                                                                  |
+| **Transition** | Zoom out to architecture diagram.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
-### 0:05 – 0:15 — Landing page (10 s)
+## Scene 4 — Sponsors integration (0:50 → 1:10) · 20 s
 
-- **Screen:** the home page `/`. The hero, the three pillars, and the
-  CTA "Launch Control Tower" are visible. Don't move the mouse for
-  the first 3 seconds — let the eye catch the bullets.
-- **Action:** at 0:11, click **Launch Control Tower**.
-- **Voice-over:**
-  > "Autonomous agents now use tools, delegate to sub-agents, and
-  > write to real systems. Control Tower is the gate that decides
-  > if a multi-agent run is safe to ship."
+| Field         | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **VO (EN)**   | "Each sponsor does what it's best at. Gemini 2.5 Flash powers the Planner with structured JSON output and the Worker with native function calling — ten typed tools, full anti-injection, real cost tracking from `usage_metadata`. Vultr hosts the runner: one Cloud Compute VM in Frankfurt, five dollars a month, cloud-init provisioning, zero SSH required to ship a fresh node. Vercel ships the UI and the proxy at the edge — secrets never leave the VM." |
+| **VO (FR support)** | *« Chaque sponsor fait ce qu'il fait de mieux. Gemini 2.5 Flash anime le Planner en sortie JSON structurée et le Worker en function calling natif — dix outils typés, anti-injection complet, tracking de coût réel via `usage_metadata`. Vultr héberge le runner : une VM Cloud Compute à Francfort, 5 dollars par mois, provisioning par cloud-init, zéro SSH pour livrer un nouveau node. Vercel ship l'UI et le proxy en edge — les secrets ne quittent jamais la VM. »* |
+| **On-screen** | (a) 0:50 → 0:55 — architecture diagram exported from `docs/ARCHITECTURE.md` (`07_arch.png`) with Vercel/Vultr/Gemini labels highlighted in sequence. (b) 0:55 → 1:02 — code cut-away on `runner/app/agents/worker.py` (function-calling loop) for 3 s, then `runner/app/main.py::enforce_runner_secret` (middleware) for 2 s, then `src/lib/runner/auth.ts::runnerHeaders` (Vercel side) for 2 s. (c) 1:02 → 1:10 — `scripts/vultr-provision.ps1 -DryRun` output (`08_provision.png`), then health check `curl http://136.244.89.159/health` returning 200, then smoke triple flash: `401 missing_runner_secret` → `401 invalid_runner_secret` → `200`. |
+| **Captions**  | `Gemini · gemini-2.5-flash` · `Vultr · vc2-1c-2gb · fra` · `cloud-init · UFW 22/80/443` · `Vercel · /api/runner-proxy`                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Transition** | Cross-fade to business-value scene.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
-### 0:15 – 0:30 — Scenario picker (15 s)
+## Scene 5 — Business value (1:10 → 1:25) · 15 s
 
-- **Screen:** `/control-tower` loads. Hover the **Multi-agent customer
-  escalation run** card. Show the **Recommended demo path** badge.
-- **Action:** click the **Audit this run** CTA on the hero card.
-- **Voice-over:**
-  > "The default scenario is a multi-agent customer escalation. A CEO
-  > agent delegates to a Support agent, which calls the knowledge
-  > base, then delegates to a CRM agent and an Email agent."
+| Field         | Value                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **VO (EN)**   | "What ArcadeOps unlocks: shipping autonomous agents in production with the same confidence we ship code. Three policy gates is what stands between a Gemini hallucination and a real customer email. That's the difference between a demo and a system you can run for paying customers." |
+| **VO (FR support)** | *« Ce qu'ArcadeOps débloque : déployer des agents IA en prod avec la même confiance qu'un déploiement de code. Trois policy gates, c'est ce qui sépare une hallucination Gemini d'un vrai email client envoyé par erreur. C'est la différence entre une démo et un système exploitable pour de vrais clients payants. »* |
+| **On-screen** | Split panel — left: the `BLOCKED` verdict frozen on screen with policy gates list; right: a stylized "post-guardrail" version showing `NEEDS_REVIEW` after applying `approval.request` and audit log (use the existing remediation simulation panel in the UI).                                                                                                                                                                            |
+| **Caption**   | "Decision-grade observability for autonomous agents."                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Transition** | Fade to CTA.                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
-### 0:30 – 0:45 — Evidence timeline (15 s)
+## Scene 6 — Call to action (1:25 → 1:30) · 5 s
 
-- **Screen:** scroll slowly through `ScenarioEvidenceTimeline`.
-  Stop on the cards that show `agent`, `tool`, `risk: high`,
-  `durationMs`. Hover the "Production gate" evidence card.
-- **Voice-over:**
-  > "ArcadeOps captures every step — agent, tool, risk, latency,
-  > cost. This is the structured trace the production gate audits."
-
-### 0:45 – 1:05 — Live Gemini audit (20 s)
-
-- **Screen:** the right-hand `GeminiJudgePanel`. The **Mode: Live
-  Gemini audit** pill is visible in green.
-- **Action:** at 0:46, click **Run production gate**.
-- **Screen during loading:** the spinner and the streaming JSON
-  appear. Hold for ~2-3 s. The verdict card unfolds: `Blocked`, score
-  in red (e.g. 28), the `Policy gate: …` badges appear.
-- **Voice-over:**
-  > "Gemini reads the full trace server-side and produces a strict
-  > JSON verdict. On top of that, ArcadeOps applies deterministic
-  > policy gates and a verdict-consistency layer. The CRM write
-  > without approval and the unreviewed customer email each trip a
-  > production gate. The run is blocked."
-
-### 1:05 – 1:20 — Re-score with guardrails (15 s)
-
-- **Screen:** scroll to the `GuardrailSimulationPanel`. Tick:
-  - "Require human approval for destructive tools"
-  - "Require review before outbound email"
-- **Action:** at 1:08, click **Re-run production gate**.
-- **Screen:** the second verdict comes back. Score jumps (e.g.
-  28 → 78), verdict moves to `needs_review` or `ready`. Show the
-  delta clearly.
-- **Voice-over:**
-  > "Pick the recommended guardrails. Re-run the gate. The same trace,
-  > re-scored as if those guardrails were already implemented. Score
-  > delta: from 28 to 78. The gate now passes the run."
-
-### 1:20 – 1:30 — Punchline + outro (10 s)
-
-- **Screen:** scroll down to **Powered by ArcadeOps Runtime**. Pause
-  on the architecture ribbon (Agents → Tools → Sub-agents → Trace →
-  Gemini → Decision → Guardrails). Hold 3 s.
-- **Voice-over:**
-  > "Gemini reasons on the trace. ArcadeOps enforces the production
-  > gate. ArcadeOps Control Tower — try it now."
-- **Screen ends on:** the `/control-tower` URL visible in the address
-  bar.
+| Field         | Value                                                                                                                                                                                                                                                            |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **VO (EN)**   | "Try the live demo. Read the code. ArcadeOps Control Tower."                                                                                                                                                                                                     |
+| **VO (FR support)** | *« Essayez la démo live. Lisez le code. ArcadeOps Control Tower. »*                                                                                                                                                                                          |
+| **On-screen** | Two URLs stacked center: `arcadeops-control-tower-hackathon.vercel.app` and `github.com/Damso74/arcadeops-control-tower-hackathon`. Logos: Gemini · Vultr · Vercel. Optional small webcam inset of presenter waving.                                              |
+| **Caption**   | "Built in 7 days for Milan AI Week 2026."                                                                                                                                                                                                                        |
+| **Transition** | Hard cut to black, end card.                                                                                                                                                                                                                                     |
 
 ---
 
-## Voice-over master script (clean, copy-paste)
+## End-card (post-roll, optional 2 s)
 
-> "ArcadeOps Control Tower — a Gemini-powered production gate for
-> autonomous AI agents.
->
-> Autonomous agents now use tools, delegate to sub-agents, and write
-> to real systems. Control Tower is the gate that decides if a
-> multi-agent run is safe to ship.
->
-> The default scenario is a multi-agent customer escalation. A CEO
-> agent delegates to a Support agent, which calls the knowledge
-> base, then delegates to a CRM agent and an Email agent.
->
-> ArcadeOps captures every step — agent, tool, risk, latency, cost.
-> This is the structured trace the production gate audits.
->
-> Gemini reads the full trace server-side and produces a strict JSON
-> verdict. On top of that, ArcadeOps applies deterministic policy
-> gates and a verdict-consistency layer. The CRM write without
-> approval and the unreviewed customer email each trip a production
-> gate. The run is blocked.
->
-> Pick the recommended guardrails. Re-run the gate. The same trace,
-> re-scored as if those guardrails were already implemented. Score
-> delta: from 28 to 78. The gate now passes the run.
->
-> Gemini reasons on the trace. ArcadeOps enforces the production
-> gate. ArcadeOps Control Tower — try it now."
+- Tagline one-liner: "Gemini runs the agent. Vultr executes the
+  workflow. ArcadeOps decides if it can ship."
+- Author placeholder: `[Your name]`
+- License: MIT
+- Submission: Lablab.ai · Milan AI Week 2026
 
 ---
 
-## Notes for the recording
+## Practical recording notes
 
-- Speak slowly enough that subtitles auto-generated by YouTube are
-  readable without correction. Target ~150 words/min.
-- If the live Gemini call exceeds 8 seconds, **cut and re-record**. A
-  hackathon judge expects the verdict to feel snappy. The cap is
-  10 s of dead air on screen.
-- Resist the urge to explain the policy gate code in the video — the
-  README does that. The video must show the **outcome**, not the
-  mechanism.
-- Mention "Gemini" at least 3 times. Mention "production gate" at
-  least 2 times. Mention "multi-agent" at least 2 times.
-- Do NOT show: the GitHub repo (link goes in the description), the
-  source code, the dev tools, the terminal, the API keys panel.
-- Do show: the home `/`, the scenario picker, the evidence timeline,
-  the Gemini panel verdict, the guardrails re-score, the runtime
-  section.
+- **Lower the screen brightness on the terminal** before recording —
+  the UI white background will spike the histogram otherwise.
+- **Pre-script the curl line** in clipboard. Live-typing burns 3 s of
+  budget you don't have.
+- **Mute system notifications.** The macOS / Windows ping is the
+  fastest way to tank a hackathon submission.
+- **Record at 60 fps if your encoder allows** — it makes the timeline
+  scroll feel premium even on a $5 VM.
+- **Stretch goal:** re-record scene 3 a second time with a `safe_research`
+  scenario that returns `is_mocked=true` to demonstrate the runner
+  fixture fallback. Use it as a director's-cut B-roll if the prod run
+  is unstable on demo day.
 
----
+## Timing summary
 
-## Description (paste under the video on YouTube / Loom)
-
-```
-ArcadeOps Control Tower — A Gemini-powered production gate for autonomous AI agents.
-
-Live demo: https://arcadeops-control-tower-hackathon.vercel.app/
-Source:    https://github.com/Damso74/arcadeops-control-tower-hackathon
-Built for AI Agent Olympics · Lablab.ai · Milan AI Week 2026.
-
-Control Tower audits multi-agent AI runs before production. Gemini reads
-the full trace and produces a structured verdict. ArcadeOps then applies
-deterministic policy gates and a verdict-consistency layer to guarantee
-the final decision is coherent. A "blocked" verdict can never recommend
-"ship".
-
-Scenario shown in the video: a CEO agent delegates to a Support agent,
-which calls the knowledge base, then delegates to a CRM agent (CRM
-write without approval) and an Email agent (customer email without
-review). Control Tower blocks the run before any real system is touched.
-A second pass re-scores the same trace with the recommended guardrails
-applied as a what-if simulation.
-
-Tech stack: Next.js 16 · React 19 · TypeScript strict · Tailwind 4 ·
-Google Gemini 2.5 Flash via REST · Vercel · Docker (Vultr-ready).
-```
+| Scene | Title           | Start | End  | Duration |
+| ----- | --------------- | ----- | ---- | -------- |
+| 1     | Hook            | 0:00  | 0:10 | 10 s     |
+| 2     | Problem         | 0:10  | 0:25 | 15 s     |
+| 3     | Solution (live) | 0:25  | 0:50 | 25 s     |
+| 4     | Sponsors        | 0:50  | 1:10 | 20 s     |
+| 5     | Business value  | 1:10  | 1:25 | 15 s     |
+| 6     | CTA             | 1:25  | 1:30 | 5 s      |
+| **Total** |             |       |      | **90 s** |
