@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { runnerHeaders } from "@/lib/runner/auth";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
   try {
     const upstream = await fetch(upstreamUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...runnerHeaders() },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(85_000),
     });

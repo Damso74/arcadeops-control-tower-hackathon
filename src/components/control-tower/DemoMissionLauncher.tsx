@@ -215,11 +215,11 @@ export function DemoMissionLauncher({
               type="button"
               onClick={() => startRun("live")}
               disabled={liveDisabled}
-              className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-zinc-100 transition-colors hover:border-white/30 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-5 py-2.5 text-sm font-medium text-emerald-100 transition-colors hover:border-emerald-300/60 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ⚡ Run live with ArcadeOps backend
-              <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-200">
-                Dev mode
+              <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-200">
+                Gemini + Vultr
               </span>
             </button>
           ) : null}

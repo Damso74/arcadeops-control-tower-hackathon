@@ -57,3 +57,12 @@ runner/.uvicorn.log
 runner/.uvicorn.err.log
 runner/.smoke-payload.json
 runner/.smoke-response.json
+
+# Local Python virtualenv + bytecode (never ship to repo) — Lot 5 FULL
+runner/.venv/
+runner/**/__pycache__/
+runner/**/*.pyc
+
+# Smoke fixtures generated during prod proxying (Lot 4 / Lot 5)
+.smoke-*.json
+.smoke-*.log

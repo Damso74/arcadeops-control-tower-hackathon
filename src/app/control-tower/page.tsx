@@ -17,12 +17,15 @@ export const metadata: Metadata = {
 // no client probe). Gemini availability is detected at runtime via
 // /api/capabilities so a key added post-deploy enables the judge without a
 // rebuild.
+//
+// Lot 5 FULL: the live backend is now the Vultr FastAPI runner, surfaced
+// to Vercel as `RUNNER_URL`. The optional `RUNNER_SECRET` is enforced
+// server-side through `runnerHeaders()` — it is never required for the
+// availability check itself (a missing secret degrades to "no auth header",
+// which the runner accepts when its kill-switch `RUNNER_REQUIRE_SECRET=0`).
 function detectModeAvailability(): ControlTowerModeAvailability {
-  const baseUrl = process.env.ARCADEOPS_API_BASE_URL;
-  const token = process.env.ARCADEOPS_DEMO_TOKEN;
-  const agentId = process.env.ARCADEOPS_DEMO_AGENT_ID;
-  const live = Boolean(baseUrl && token && agentId);
-  return { replay: true, live };
+  const runnerUrl = process.env.RUNNER_URL?.trim();
+  return { replay: true, live: Boolean(runnerUrl) };
 }
 
 export default function ControlTowerPage() {
