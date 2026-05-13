@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
-const RUNNER_URL = process.env.RUNNER_URL ?? "http://140.82.35.52";
+const RUNNER_URL = (process.env.RUNNER_URL ?? "http://140.82.35.52").trim();
 
 interface RunAgentRequest {
   mission: string;
