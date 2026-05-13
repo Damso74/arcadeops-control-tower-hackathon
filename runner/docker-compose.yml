@@ -10,6 +10,12 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       REGION: ${REGION:-local}
       RUNNER_VERSION: ${RUNNER_VERSION:-0.1.0}
+      # Lot 5 FULL — explicit forwarding so the kill-switch is loaded
+      # even if env_file resolution fails for some reason. The empty-
+      # default form (`${VAR:-}`) keeps Lot 4 backwards-compat: when the
+      # host has no value, the container also sees no value.
+      RUNNER_REQUIRE_SECRET: ${RUNNER_REQUIRE_SECRET:-0}
+      RUNNER_SECRET: ${RUNNER_SECRET:-}
     restart: unless-stopped
     healthcheck:
       test:

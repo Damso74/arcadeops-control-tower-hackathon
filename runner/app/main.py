@@ -31,7 +31,7 @@ app.add_middleware(
 # Endpoints that stay public regardless of the kill-switch. /health is the
 # Vultr/cloud-init readiness probe; /docs and /openapi.json keep the
 # interactive API surface usable for hackathon judges.
-_PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+_PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc", "/_diag"}
 
 
 @app.middleware("http")
@@ -74,3 +74,18 @@ app.include_router(health_router)
 app.include_router(run_agent_router)
 app.include_router(tools_router)
 app.include_router(runs_router)
+
+
+@app.get("/_diag")
+async def diag() -> dict[str, object]:
+    """Lot 5 FULL temporary diagnostics endpoint.
+
+    Used during the post-deploy smoke to assert that the kill-switch
+    actually loaded. Never echoes the secret value, only its presence
+    boolean. Should be removed once Lot 5 ships."""
+    return {
+        "runner_require_secret_loaded": bool(settings.runner_require_secret),
+        "runner_secret_present": bool(settings.runner_secret),
+        "runner_secret_length": len(settings.runner_secret or ""),
+        "runner_version": settings.runner_version,
+    }
