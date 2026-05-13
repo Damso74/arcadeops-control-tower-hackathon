@@ -28,7 +28,7 @@ export function ToolCallCard({ call }: ToolCallCardProps) {
         <StatusChip status={call.status} />
       </header>
       {call.description ? (
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">{call.description}</p>
+        <p className="mt-2 break-all text-sm leading-relaxed text-zinc-400">{call.description}</p>
       ) : null}
       <footer className="mt-3 flex items-center gap-3 text-xs text-zinc-500">
         <span>{formatTime(call.startedAtIso)}</span>
