@@ -261,7 +261,11 @@ export function GuardrailsPanel({
               Simulation
             </span>
           </div>
-          <JudgeResultView result={afterResult} collapseDetails />
+          <JudgeResultView
+            result={afterResult}
+            collapseDetails
+            showInfrastructureProof={false}
+          />
         </div>
       ) : null}
     </section>

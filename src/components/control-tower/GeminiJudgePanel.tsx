@@ -26,6 +26,7 @@ import type {
 } from "@/lib/control-tower/gemini-types";
 
 import { Disclosure } from "./Disclosure";
+import { InfrastructureProofCard } from "./InfrastructureProofCard";
 
 interface GeminiJudgePanelProps {
   /**
@@ -74,6 +75,12 @@ export function GeminiJudgePanel({
   const [available, setAvailable] = useState<boolean | null>(null);
   const [model, setModel] = useState<string | null>(null);
   const [state, setState] = useState<JudgeState>({ status: "idle" });
+  // Lot 2a — measured client-side round-trip of the most recent
+  // /api/gemini/judge call. Surfaced in the InfrastructureProofCard so
+  // the jury sees concrete end-to-end timing instead of guessing.
+  const [lastAuditLatencyMs, setLastAuditLatencyMs] = useState<number | null>(
+    null,
+  );
   const abortRef = useRef<AbortController | null>(null);
   const minDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -133,6 +140,12 @@ export function GeminiJudgePanel({
     // the result past Gemini's actual latency once the floor is past.
     const finalize = (next: JudgeState) => {
       const elapsed = Date.now() - startedAt;
+      // Capture the *real* end-to-end latency once, regardless of the
+      // ticker floor — the InfrastructureProofCard always shows the
+      // genuine network timing, not the artificial UX delay.
+      if (next.status === "ready" || next.status === "error") {
+        setLastAuditLatencyMs(elapsed);
+      }
       const remaining = Math.max(0, TICKER_MIN_DURATION_MS - elapsed);
       if (remaining === 0) {
         setState(next);
@@ -282,7 +295,10 @@ export function GeminiJudgePanel({
       ) : null}
 
       {state.status === "ready" ? (
-        <JudgeResultView result={state.result} />
+        <JudgeResultView
+          result={state.result}
+          lastAuditLatencyMs={lastAuditLatencyMs}
+        />
       ) : null}
     </section>
   );
@@ -296,6 +312,19 @@ interface JudgeResultViewProps {
    * "After guardrails" panel to keep the comparison the wow moment.
    */
   collapseDetails?: boolean;
+  /**
+   * Lot 2a — Round-trip latency (ms) of the audit that produced
+   * `result`. When provided, the `InfrastructureProofCard` rendered
+   * under the decision surfaces it as "Last audit latency".
+   */
+  lastAuditLatencyMs?: number | null;
+  /**
+   * Lot 2a — When true, render the `InfrastructureProofCard` under
+   * the decision card. Defaults to `true` for the "before" view; the
+   * `JudgeResultView` re-mounted in the After comparison passes
+   * `false` to avoid duplicating the proof card twice on the page.
+   */
+  showInfrastructureProof?: boolean;
 }
 
 /**
@@ -313,6 +342,8 @@ interface JudgeResultViewProps {
 export function JudgeResultView({
   result,
   collapseDetails = false,
+  lastAuditLatencyMs,
+  showInfrastructureProof = true,
 }: JudgeResultViewProps) {
   const sortedRisks = [...result.risks].sort(
     (a, b) => severityOrder(b.severity) - severityOrder(a.severity),
@@ -521,6 +552,10 @@ export function JudgeResultView({
   return (
     <div className="flex flex-col gap-6">
       <DecisionCard result={result} />
+
+      {showInfrastructureProof ? (
+        <InfrastructureProofCard lastAuditLatencyMs={lastAuditLatencyMs} />
+      ) : null}
 
       {collapseDetails ? (
         <Disclosure

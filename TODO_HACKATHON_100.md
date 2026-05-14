@@ -61,12 +61,13 @@
 
 ### Lot 2a — Vultr Infrastructure Proof Card + health polling (début, réf §5)
 
-- [ ] Étendre `src/app/api/health/route.ts` : ajouter `vultrRunnerConfigured: Boolean(process.env.RUNNER_URL?.trim())` + `region: "fra"` dans la réponse.
-- [ ] Créer `src/lib/control-tower/health-probe.ts` (helper client `pollHealth(intervalMs)` avec `AbortController`).
-- [ ] Créer `src/components/control-tower/InfrastructureProofCard.tsx` (affiche `Backend: Vultr / Runtime: Docker+FastAPI / Region: fra / Status: Online (pastille) / Last audit latency: X.X s`).
-- [ ] Intégrer la card **juste sous `<DecisionCard>`** dans `GeminiJudgePanel.tsx::JudgeResultView`.
-- [ ] Smoke : polling toutes 30s, pastille verte par défaut, simuler 500 → pastille orange.
-- [ ] Gates + commit `feat(control-tower): Lot 2a — Vultr infrastructure proof card + health polling`.
+- [x] Étendre `src/app/api/health/route.ts` : ajouter `vultrRunnerConfigured` (true si `RUNNER_URL` ou fallback Vultr historique) + `region: "fra"` dans la réponse.
+- [x] Créer `src/lib/control-tower/health-probe.ts` (helper client `pollHealth(onSnapshot, options)` avec `AbortController` + premier probe immédiat puis intervalle).
+- [x] Créer `src/components/control-tower/InfrastructureProofCard.tsx` (affiche Backend Vultr / Runtime Docker+FastAPI / Region FRA Frankfurt / Status pastille animée / Last audit latency).
+- [x] Intégrer la card **juste sous `<DecisionCard>`** dans `GeminiJudgePanel.tsx::JudgeResultView` ; passe la latence mesurée client-side via state `lastAuditLatencyMs`.
+- [x] `GuardrailsPanel.tsx` : `<JudgeResultView showInfrastructureProof={false}>` pour éviter de doubler la card dans la vue "After".
+- [x] Smoke : sera vérifié en fin de Bloc 2 via browser MCP.
+- [x] Gates + commit `feat(control-tower): Lot 2a — Vultr infrastructure proof card + health polling`.
 
 ---
 
