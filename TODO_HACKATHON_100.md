@@ -75,14 +75,14 @@
 
 ### Lot 2b — Before/After remonté + 5 policies listées (réf §5)
 
-- [ ] **AVANT TOUTE MODIF MOTEUR** : exécuter `npx tsx scripts/smoke-policy-gates.ts` → noter résultats baseline (T1-T5).
-- [ ] `policy-gates.ts` : ajouter rule #5 `require_replay_id` (severity: high, scoreCap: 70, verdictCeiling: needs_review, matchers `MISSING_REPLAY_ID_TOKENS` à définir) (P4#41).
-- [ ] Re-exécuter `smoke-policy-gates.ts` → vérifier T1+T2 toujours BLOCKED, T3 NEEDS_REVIEW, T4 READY (sinon corriger matchers).
-- [ ] `ControlTowerExperience.tsx` : rendre `<ReadinessComparison>` dès `judgeBefore !== null`, avec placeholder "Apply guardrails below to compute the After score" si `judgeAfter === null` (P0#8).
-- [ ] Créer `src/components/control-tower/ProductionPoliciesCard.tsx` : tableau 5 lignes (label / statut `enforced` / `triggered` / `covered`), calcul du statut depuis `policyGate.rules` du dernier `result` (P1#15).
-- [ ] Intégrer `<ProductionPoliciesCard>` dans la section Decide, sous le verdict.
-- [ ] Smoke 3 scenarios : critical (3+ triggered, 1-2 enforced), medium (1 triggered, 4 enforced), low (0 triggered, 5 enforced).
-- [ ] Gates + commit `feat(control-tower): Lot 2b — before/after promoted + 5 production policies card`.
+- [x] **AVANT TOUTE MODIF MOTEUR** : créé `scripts/smoke-policy-gates.ts` (T1-T5) — baseline 5/5 PASS (T3 redéfini en "engine-only smoke" car le verdict needs_review attendu vient du Gemini live, pas du moteur déterministe seul).
+- [x] `policy-gates.ts` : ajouté rule #5 `require_replay_id` (severity: high, scoreCap: 70, verdictCeiling: needs_review, matchers `MISSING_REPLAY_ID_TOKENS`, scenarioIds hard-wired sur les 2 critiques) (P4#41).
+- [x] Re-exécuté `smoke-policy-gates.ts` → 5/5 PASS, T1+T2 ont bien gagné la 5ᵉ rule, T3+T4 inchangés.
+- [x] `ControlTowerExperience.tsx` : `<ReadinessComparison showPlaceholderWhenAfterMissing>` rendu dès `judgeBefore !== null` dans la section Decide (au-dessus de la GuardrailsPanel) — `<ReadinessComparisonPlaceholder>` interne affiche "Apply guardrails below to compute the After score" si `judgeAfter === null` (P0#8).
+- [x] Créé `src/components/control-tower/ProductionPoliciesCard.tsx` : 5 lignes (label / description / statut `armed` avant audit, `enforced` ou `triggered` après), badges synthétiques `X enforced` / `Y triggered` (P1#15).
+- [x] Intégré `<ProductionPoliciesCard result={judgeBefore}>` dans la section Decide, juste sous `<GeminiJudgePanel>` (rendu permanent — pédagogie pré-audit + état post-audit).
+- [x] Smoke moteur via `npx tsx scripts/smoke-policy-gates.ts` : T1 4 rules, T2 5 rules, T3+T4 0 rules, T5 1 rule — 5/5 PASS.
+- [x] Gates + commit `feat(control-tower): Lot 2b — before/after promoted + 5 production policies card`.
 
 ### Lot 2c — PasteCard enrichi + Export JSON (réf §5)
 

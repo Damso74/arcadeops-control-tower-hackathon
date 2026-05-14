@@ -19,6 +19,7 @@ import { GeminiJudgePanel } from "./GeminiJudgePanel";
 import { GuardrailsPanel } from "./GuardrailsPanel";
 import { ObservabilityPanel } from "./ObservabilityPanel";
 import { PastedTraceInput } from "./PastedTraceInput";
+import { ProductionPoliciesCard } from "./ProductionPoliciesCard";
 import { ReadinessComparison } from "./ReadinessComparison";
 import { ScenarioEvidenceTimeline } from "./ScenarioEvidenceTimeline";
 import {
@@ -276,6 +277,26 @@ export function ControlTowerExperience({
           actionLabel={actionLabelFor(selection.mode)}
           emptyHint={emptyHintFor(selection.mode)}
         />
+        {/*
+         * Lot 2b — production policies enforced card. Always rendered
+         * inside the Decide section so a judge sees the rule catalogue
+         * even before the first audit; once a verdict lands the card
+         * lights up which rules fired vs stayed armed.
+         */}
+        <ProductionPoliciesCard result={judgeBefore} />
+        {/*
+         * Lot 2b (P0#8) — Before/After is now part of the Decide
+         * section, lifted out of the Guardrails panel. Renders a
+         * placeholder for the After side as soon as the first verdict
+         * lands so the wow-moment frame is visible immediately.
+         */}
+        {judgeBefore ? (
+          <ReadinessComparison
+            before={judgeBefore}
+            after={judgeAfter}
+            showPlaceholderWhenAfterMissing
+          />
+        ) : null}
       </section>
 
       {/* Guardrails + re-score (only shown after the first verdict) */}
@@ -284,7 +305,6 @@ export function ControlTowerExperience({
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             4 · Add guardrails &amp; re-score
           </h2>
-          <ReadinessComparison before={judgeBefore} after={judgeAfter} />
           <GuardrailsPanel
             // Remount the panel when the audited trace changes so the
             // checkbox state never carries over between runs.

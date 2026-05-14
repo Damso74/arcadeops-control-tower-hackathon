@@ -7,6 +7,13 @@ import { verdictPalette } from "./GeminiJudgePanel";
 interface ReadinessComparisonProps {
   before: GeminiJudgeResult | null;
   after: GeminiJudgeResult | null;
+  /**
+   * Lot 2b — when `true`, render a placeholder for the "after" side
+   * even before any guardrail has been applied. Lets the cockpit show
+   * the comparison frame as soon as the first verdict lands so the
+   * judge sees the wow-moment slot from the very first audit.
+   */
+  showPlaceholderWhenAfterMissing?: boolean;
 }
 
 /**
@@ -16,12 +23,23 @@ interface ReadinessComparisonProps {
  * one click. The card shows score, verdict and an interpretation
  * sentence so a judge does not have to read four paragraphs to know
  * whether the simulation moved the needle.
+ *
+ * Lot 2b (P0#8) — Pre-guardrails placeholder mode:
+ * When `before` is set but `after` is still null, the card now
+ * renders a dimmed "Apply guardrails below to compute the After
+ * score" panel instead of returning `null`. Lets the comparison
+ * appear as soon as the first verdict lands.
  */
 export function ReadinessComparison({
   before,
   after,
+  showPlaceholderWhenAfterMissing = false,
 }: ReadinessComparisonProps) {
-  if (!before || !after) return null;
+  if (!before) return null;
+  if (!after) {
+    if (!showPlaceholderWhenAfterMissing) return null;
+    return <ReadinessComparisonPlaceholder before={before} />;
+  }
   const delta = after.readinessScore - before.readinessScore;
   const sign = delta === 0 ? "±" : delta > 0 ? "+" : "−";
   const deltaTone =
@@ -78,6 +96,52 @@ export function ReadinessComparison({
           {interpretation}
         </p>
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * Pre-guardrails placeholder rendered next to the Before card so the
+ * comparison frame appears immediately after the first audit. Once the
+ * user applies guardrails the panel re-renders with the real After
+ * card from the parent.
+ */
+function ReadinessComparisonPlaceholder({
+  before,
+}: {
+  before: GeminiJudgeResult;
+}) {
+  return (
+    <section
+      aria-label="Readiness comparison waiting for guardrails"
+      className="flex flex-col gap-4 rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.06] via-white/[0.02] to-emerald-500/[0.06] p-5 sm:p-6"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-violet-300" aria-hidden />
+          <h3 className="text-sm font-semibold text-zinc-50 sm:text-base">
+            Before guardrails → after guardrails
+          </h3>
+        </div>
+        <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
+          What-if simulation
+        </span>
+      </header>
+
+      <div className="grid items-center gap-4 sm:grid-cols-[1fr_auto_1fr]">
+        <ReadinessCard label="Before guardrails" result={before} accent="muted" />
+        <div className="flex items-center justify-center sm:flex-col sm:gap-2">
+          <ArrowRight aria-hidden className="h-5 w-5 text-zinc-600" />
+        </div>
+        <article className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-zinc-950/40 p-4 text-center">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            After guardrails
+          </span>
+          <p className="text-sm leading-relaxed text-zinc-300">
+            Apply guardrails below to compute the After score.
+          </p>
+        </article>
+      </div>
     </section>
   );
 }
