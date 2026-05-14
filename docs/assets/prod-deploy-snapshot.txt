@@ -1,0 +1,43 @@
+ArcadeOps Control Tower - Production deploy snapshot at freeze
+===============================================================
+Deployment URL    : https://arcadeops-control-tower-hackathon-jbj8q9e7j-damso74s-projects.vercel.app
+Production alias  : https://arcadeops-control-tower-hackathon.vercel.app
+Commit SHA        : 24a3b4de84375215ed367a12c5aeee6faba8d3f7
+Created at        : 2026-05-14 21:49:03 UTC
+Status            : READY
+Framework         : Next.js 16.2.6
+===============================================================
+
+This snapshot freezes the deploy that served the hackathon submission
+smoke (5/5 PASS via scripts/pre-demo-check.ps1, end-to-end live Gemini
+run via /api/runner-proxy: BLOCKED verdict, live Gemini, runner=vultr).
+
+The freeze tag `v1.0.0-hackathon-submit` is applied one commit forward
+on top of this snapshot file (a docs-only commit), so the tagged
+deploy is functionally identical to the deploy described above; only
+the docs/assets/ tree adds this reference file. Reference for video
+recording and jury demo continuity.
+
+Build summary (local `npm run build` against this commit):
+  - Compiled successfully in 6.3s
+  - TypeScript pass in 11.7s
+  - Static pages generated: 7
+  - Total wall-clock build time: ~32 s
+  - Routes: 9 total (3 static / 6 dynamic):
+    * Static (prerendered)         : /, /_not-found, /control-tower
+    * Dynamic (server-rendered)    : /api/arcadeops/run,
+                                      /api/capabilities,
+                                      /api/gemini/judge,
+                                      /api/health,
+                                      /api/replay,
+                                      /api/runner-proxy
+
+Pre-demo check (scripts/pre-demo-check.ps1) at freeze:
+  - Vercel app /control-tower    : PASS
+  - Vercel proxy GET             : PASS, proxy=ok
+  - Vultr runner /health         : PASS
+  - Runner secret enforced       : PASS, HTTP 401
+  - End-to-end live run          : PASS, ~15 s, BLOCKED, live Gemini,
+                                    runner=vultr, model=gemini-2.5-flash
+
+Tag : v1.0.0-hackathon-submit
