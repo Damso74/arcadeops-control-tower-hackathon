@@ -1,10 +1,14 @@
 # 90-second jury video — storyboard
 
-> **Goal:** in 90 seconds, prove that `Gemini runs the agent · Vultr
-> executes the workflow · ArcadeOps decides if it can ship` is real,
-> live and clickable. Bilingual notes — primary VO is **English**,
+> **Goal:** in 90 seconds, prove that **`Gemini judges · Vultr runs ·
+> ArcadeOps blocks unsafe autonomous agents before production`** is
+> real, live and clickable. Bilingual notes — primary VO is **English**,
 > French support text in italics underneath each scene for the recording
 > session.
+>
+> _<sub>Lot 4a — V2 pitch acted (decision §6-A). Older internal pitch
+> ("Gemini runs the agent · Vultr executes the workflow · ArcadeOps
+> decides if it can ship") kept as historical context only.</sub>_
 
 ## Recording setup
 
@@ -12,13 +16,29 @@
 - **Capture:** OBS or Loom screen-share at full resolution. Webcam
   inset is optional and only used in scene 6.
 - **Two browser tabs prepared:**
-  1. https://arcadeops-control-tower-hackathon.vercel.app
+  1. https://arcadeops-control-tower-hackathon.vercel.app/control-tower
   2. https://github.com/Damso74/arcadeops-control-tower-hackathon
 - **One terminal prepared** (PowerShell or any shell with `curl` + `jq`).
 - **VS Code** open on `runner/app/agents/worker.py` and
   `src/lib/control-tower/policy-gates.ts` for the code cut-aways.
 - Pre-warm the Vultr runner once (`curl http://136.244.89.159/health`)
-  to avoid a cold-start in scene 3.
+  to keep the `<InfrastructureProofCard>` `Status: Online` pastille
+  green during the scene 3 close-up — even though the official video
+  films **scenario_trace mode** (instant 4 s Gemini audit), not the
+  130 s live Vultr+Gemini run path.
+
+> _<sub>**Lot 4b storyboard update (cockpit V2 / hackathon-100):**
+> the `⚡ Run live with ArcadeOps backend` button (Vultr 130 s/run) is
+> intentionally **masked in public prod** via the
+> `NEXT_PUBLIC_LIVE_VULTR=0` kill-switch (decision §6-B). The
+> recording showcases the new wow path: sticky 3-step stepper +
+> Recommended-demo banner + Critical scenario card →
+> `<GeminiTicker>` 4 s animation → `<DecisionCard>` with V2 punchline
+> + `<ExpectedVsActualBadge>` + `<ProductionPoliciesCard>` (5 rules) →
+> `<InfrastructureProofCard>` (Vultr region + last latency) →
+> `<CockpitScoreboard>` bumping in real time. The live Vultr path is
+> still shown discreetly via the InfrastructureProofCard chip, which
+> is what proves the runtime claim without burning 130 s of video.</sub>_
 
 ## Asset checklist (capture before recording)
 
@@ -49,10 +69,10 @@
 
 | Field         | Value                                                                                                          |
 | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| **VO (EN)**   | "Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship."                        |
-| **VO (FR support)** | *« Gemini fait tourner l'agent. Vultr exécute le workflow. ArcadeOps décide s'il peut partir en prod. »* |
-| **On-screen** | Hero shot of `https://arcadeops-control-tower-hackathon.vercel.app` with the tagline overlay (`01_hero.png`).  |
-| **Lower third** | `arcadeops-control-tower-hackathon.vercel.app`                                                               |
+| **VO (EN)**   | "Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production."                      |
+| **VO (FR support)** | *« Gemini juge. Vultr exécute. ArcadeOps bloque les agents IA dangereux avant la prod. »*                |
+| **On-screen** | (a) 0:00 → 0:03 — `public/cover.png` full-bleed (1920×1080, V2 punchline + Gemini/Vultr/Vercel chips) for the punchline beat. (b) 0:03 → 0:10 — cut to the `/control-tower` cockpit hero showing the H1 "A Gemini-powered production gate for autonomous AI agents." + the V2 emerald punchline + the secondary italic "Logs tell you what happened…" + the **`<CockpitStepper>` sticky top-bar** (1 Pick / 2 Inspect / 3 Decide) + the **`<RecommendedDemoBanner>`** below it. |
+| **Lower third** | `arcadeops-control-tower-hackathon.vercel.app/control-tower`                                                  |
 | **Transition** | Hard cut to scene 2 on the last word.                                                                         |
 
 ## Scene 2 — Problem (0:10 → 0:25) · 15 s
@@ -65,14 +85,14 @@
 | **Caption**   | "Production gates are still missing for autonomous agents."                                                                                                                                                                                                                                                                                                            |
 | **Transition** | Smooth zoom into the terminal.                                                                                                                                                                                                                                                                                                                                          |
 
-## Scene 3 — Solution, live demo (0:25 → 0:50) · 25 s
+## Scene 3 — Solution, live judge (0:25 → 0:50) · 25 s
 
 | Field         | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **VO (EN)**   | "I'll prove it live. On the Control Tower page I click the small *replay the deterministic safe sample* link to expose the launcher, then I hit the green Run-live button. Vercel injects an `x-runner-secret` header and forwards the mission to a FastAPI runner on Vultr Frankfurt. The Planner produces a JSON plan with Gemini. The Worker calls real tools through Gemini function calling. Eight steps and seven tool calls later, ArcadeOps' three policy gates fire: no destructive CRM write, no outbound email, prompt injection blocked. Verdict: BLOCKED — 23.44 seconds, 16,322 tokens, one-seventh of a cent. The agent did its job. We refused to ship its output." |
-| **VO (FR support)** | *« Je le prouve en live. Sur la page Control Tower je clique d'abord sur le petit lien « replay the deterministic safe sample » pour faire apparaître le launcher, puis sur le bouton vert « Run live ». Vercel injecte un header `x-runner-secret` et forwarde la mission vers un runner FastAPI sur Vultr Francfort. Le Planner sort un plan JSON via Gemini. Le Worker appelle de vrais outils via le function calling Gemini. Huit étapes et sept appels d'outil plus tard, les trois policy gates ArcadeOps tombent : pas d'écriture CRM destructive, pas d'email sortant sans review, prompt injection bloqué. Verdict : BLOCKED — 23,44 secondes, 16 322 tokens, un septième de cent. L'agent a fait son job. On a refusé de shipper son output. »* |
-| **On-screen** | (a) 0:25 → 0:28 — focus the `/control-tower` page, scroll to **panel 1 — Pick an agent run**, click the small dotted text link **"Or replay the deterministic safe sample (no key required)"** to swap panel 2 to the live-mode launcher. (b) 0:28 → 0:32 — click the green **⚡ Run live with ArcadeOps backend** button (with the violet "Gemini + Vultr" inline pill); let the phase pills flip in real time (visual = `docs/assets/live-demo-trace.png`). (c) 0:32 → 0:40 — zoom on the `EventTimeline` populating live with `kb.search`, `crm.lookup`, `policy.check`, `email.draft` (×2), `approval.request`, `audit.log`. (d) 0:40 → 0:45 — zoom on the verdict card showing `BLOCKED` and the 3 policy gates. (e) 0:45 → 0:50 — pull up the `ToolCallCard` for `crm.lookup` and highlight the prompt-injected `customer_note`. |
-| **Captions** (rolling)| `Live /control-tower SSE` · `is_mocked: false` · `model: gemini-2.5-flash` · `verdict: BLOCKED` · `tokens_used: 16322` · `cost_usd: 0.001424` · `run_id: 1f97ad20…` · `x-runner-secret: 200`                                                                                                                                                                                                                                                  |
+| **VO (EN)**   | "I'll prove it live. I pick the unsafe **Multi-agent customer escalation** scenario — a CRM write agent that drafts outbound emails and tries destructive writes without approval. Gemini reads the entire trace in **about four seconds** — you can see the ticker tick. The verdict drops: **BLOCKED**. The Expected-vs-Gemini badge confirms a `Match: yes` against the documented expected verdict. ArcadeOps' five non-negotiable policy rules light up below — destructive without approval, write without audit, missing replay ID, all enforced server-side. The infrastructure card shows we're talking to Vultr Frankfurt with a live audit latency. The cockpit scoreboard at the top ticks `Blocked +1`, `High-risk calls blocked +1`. The agent did its job. We refused to ship its output." |
+| **VO (FR support)** | *« Je le prouve en live. Je sélectionne le scénario unsafe **Multi-agent customer escalation** — un agent qui écrit dans le CRM, drafte des emails sortants et tente des écritures destructives sans approbation. Gemini lit toute la trace en **environ quatre secondes** — on voit le ticker défiler. Le verdict tombe : **BLOCKED**. Le badge Expected-vs-Gemini confirme `Match: yes` contre le verdict attendu documenté. Les cinq règles non-négociables d'ArcadeOps s'allument en-dessous — destructif sans approbation, write sans audit, replay ID manquant, toutes appliquées côté serveur. La carte infrastructure montre qu'on parle bien à Vultr Francfort avec une latence d'audit live. Le scoreboard tout en haut incrémente `Blocked +1`, `High-risk calls blocked +1`. L'agent a fait son job. On a refusé de shipper son output. »* |
+| **On-screen** | (a) 0:25 → 0:28 — focus the `/control-tower` page, click the **critical scenario card** (red border, `Recommended demo path` chip, `Multi-agent customer escalation`) — the card highlights, the **Audit this run** CTA pulses. (b) 0:28 → 0:32 — click **Run Gemini judge**; the `<GeminiTicker>` animation kicks in (rotating phases `Reading trace · Scoring risks · Building remediation` for ~3-4 s). (c) 0:32 → 0:36 — verdict scrolls into view: **`<DecisionCard>`** with `BLOCKED` pill (rose), `<ExpectedVsActualBadge>` `Expected: BLOCKED · Gemini: BLOCKED · Match: yes` (emerald), `<PolicyGateBadge>` "destructive_without_approval triggered (+2 more)", **Copy audit report** + **Export verdict JSON** buttons next to it. (d) 0:36 → 0:42 — pan down to **`<InfrastructureProofCard>`** (`Backend: Vultr · Region: Frankfurt · Status: Online · Last audit latency: ~4 200 ms`) then **`<ProductionPoliciesCard>`** (5 rules: 3 fired in red, 2 still armed). (e) 0:42 → 0:46 — `<ReadinessComparison>` placeholder pops with **"Apply guardrails below to compute the After score"**. (f) 0:46 → 0:50 — **scroll back to the top** of the page: the **`<CockpitScoreboard>`** has bumped: `Runs audited: 1 · Blocked: 1 · High-risk calls blocked: 1 · Avg cost: $0.0014`. |
+| **Captions** (rolling)| `scenario_trace mode` · `model: gemini-2.5-flash` · `verdict: BLOCKED` · `readinessScore: 18` · `policyGate.triggered: true` · `Match: yes` · `Backend: Vultr · fra` · `Last audit latency: 4 187 ms`                                                                                                                                                                                                                                  |
 | **Transition** | Zoom out to architecture diagram.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ## Scene 4 — Sponsors integration (0:50 → 1:10) · 20 s
@@ -99,19 +119,19 @@
 
 | Field         | Value                                                                                                                                                                                                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **VO (EN)**   | "Try the live demo. Read the code. **Gemini plans the agent workflow. Vultr executes the runner. ArcadeOps blocks unsafe actions before production.**"                                                                                                          |
-| **VO (FR support)** | *« Essayez la démo live. Lisez le code. **Gemini planifie le workflow de l'agent. Vultr exécute le runner. ArcadeOps bloque les actions dangereuses avant la prod.** »*                                                                                       |
+| **VO (EN)**   | "Try the live demo. Read the code. **Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.**"                                                                                                                                  |
+| **VO (FR support)** | *« Essayez la démo live. Lisez le code. **Gemini juge. Vultr exécute. ArcadeOps bloque les agents IA dangereux avant la prod.** »*                                                                                                                          |
 | **On-screen** | Two URLs stacked center: `arcadeops-control-tower-hackathon.vercel.app` and `github.com/Damso74/arcadeops-control-tower-hackathon`. Logos: Gemini · Vultr · Vercel. Optional small webcam inset of presenter waving.                                              |
 | **Caption**   | "Built in 7 days for Milan AI Week 2026."                                                                                                                                                                                                                        |
 | **Transition** | Hard cut to black, end card.                                                                                                                                                                                                                                     |
-| **Punchline rule** | The bolded sentence ("Gemini plans the agent workflow. Vultr executes the runner. ArcadeOps blocks unsafe actions before production.") **must be the very last sentence spoken in the recording**. Silent post-roll only after that.                       |
+| **Punchline rule** | The bolded sentence ("Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.") **must be the very last sentence spoken in the recording**. Silent post-roll only after that.                                              |
 
 ---
 
 ## End-card (post-roll, optional 2 s)
 
-- Tagline one-liner: "Gemini runs the agent. Vultr executes the
-  workflow. ArcadeOps decides if it can ship."
+- Tagline one-liner: "Gemini judges. Vultr runs. ArcadeOps blocks
+  unsafe autonomous agents before production."
 - Author: **ArcadeOps Team**
 - License: MIT
 - Submission: Lablab.ai · Milan AI Week 2026
@@ -120,14 +140,35 @@
 
 ## Practical recording notes
 
-- **UI gating reminder.** The page lands on **scenario mode**. The green
-  **⚡ Run live with ArcadeOps backend** button (the only one that hits
-  Vultr + Gemini live) renders **only after** you click the small
-  dotted-underlined text link **"Or replay the deterministic safe
-  sample (no key required)"** at the bottom of panel 1. The **purple
-  "Run Gemini judge"** button further down (panel 3) judges the bundled
-  scenario trace fixture and is **not** the live path — never click it
-  during the live shot.
+- **UI gating reminder (cockpit V2 / hackathon-100).** In public prod
+  the page lands on **scenario mode** and the green
+  **⚡ Run live with ArcadeOps backend** button is **hidden** — the
+  `NEXT_PUBLIC_LIVE_VULTR=0` kill-switch (decision §6-B) intentionally
+  removes the 130 s/run path from the jury demo. The **only button to
+  click during recording** is the purple **"Run Gemini judge"** in
+  panel 3 — it judges the bundled scenario trace fixture in **about 4 s**
+  via Gemini 2.5 Flash, which is exactly what scene 3 narrates. The
+  Vultr live path is still implicitly proven by
+  `<InfrastructureProofCard>` (Vultr region + last audit latency, polled
+  from the same backend) — no need to actually run a 130 s job on
+  camera. To re-enable the live launcher locally for an internal
+  director's-cut, set `NEXT_PUBLIC_LIVE_VULTR=1` and restart the dev
+  server.
+- **Stepper anchor.** The sticky `<CockpitStepper>` (1 Pick / 2 Inspect /
+  3 Decide) at the top of `/control-tower` highlights the active stage
+  on scroll. Scene 1 frames it at stage 1, scene 3 at stage 3 — make
+  sure the scroll position lands the active pill in frame.
+- **Scoreboard reset.** Click the small **Reset** link on the
+  `<CockpitScoreboard>` **before recording** so the audit counters
+  start at zero — scene 3 closes on `Runs audited: 1`. If you want a
+  more impressive scene 5, run the unsafe + safe + needs-review
+  scenarios once before take, then reset for the take itself.
+- **Sample loaders (pasted_trace).** The 3 sample loader buttons in
+  `<PastedTraceInput>` (`Load unsafe CRM trace` / `Load safe research
+  trace` / `Load multi-agent escalation trace`) are gated by
+  `NEXT_PUBLIC_HACKATHON_MODE=cockpit_v6` (decision §6-C). They are
+  optional in the main script but make a great director's-cut B-roll
+  if the jury asks "what about a custom trace?" during Q&A.
 - **Lower the screen brightness on the terminal** before recording —
   the UI white background will spike the histogram otherwise.
 - **Pre-script the curl line** in clipboard. Live-typing burns 3 s of
@@ -147,7 +188,7 @@
 | ----- | --------------- | ----- | ---- | -------- |
 | 1     | Hook            | 0:00  | 0:10 | 10 s     |
 | 2     | Problem         | 0:10  | 0:25 | 15 s     |
-| 3     | Solution (live) | 0:25  | 0:50 | 25 s     |
+| 3     | Solution (judge) | 0:25 | 0:50 | 25 s     |
 | 4     | Sponsors        | 0:50  | 1:10 | 20 s     |
 | 5     | Business value  | 1:10  | 1:25 | 15 s     |
 | 6     | CTA             | 1:25  | 1:30 | 5 s      |

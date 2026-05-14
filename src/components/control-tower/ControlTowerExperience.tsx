@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   GeminiJudgeResult,
@@ -13,18 +13,27 @@ import {
   TRACE_SCENARIOS,
   type TraceScenario,
 } from "@/lib/control-tower/scenarios";
+import { incrementCounter } from "@/lib/control-tower/scoreboard-store";
 
+import { CockpitScoreboard, notifyScoreboardChange } from "./CockpitScoreboard";
 import { DemoMissionLauncher } from "./DemoMissionLauncher";
 import { GeminiJudgePanel } from "./GeminiJudgePanel";
 import { GuardrailsPanel } from "./GuardrailsPanel";
 import { ObservabilityPanel } from "./ObservabilityPanel";
 import { PastedTraceInput } from "./PastedTraceInput";
+import { ProductionPoliciesCard } from "./ProductionPoliciesCard";
 import { ReadinessComparison } from "./ReadinessComparison";
 import { ScenarioEvidenceTimeline } from "./ScenarioEvidenceTimeline";
 import {
   TraceScenarioPicker,
   type ScenarioPickerSelection,
 } from "./TraceScenarioPicker";
+
+// Lot 3a — kill-switch decision §6-G in the master plan: scoreboard is
+// ON by default, can be hidden in any environment by setting
+// `NEXT_PUBLIC_SCOREBOARD=0` at build time. Inlined as a module-level
+// constant so the dead branch is fully tree-shaken in production.
+const SCOREBOARD_ENABLED = process.env.NEXT_PUBLIC_SCOREBOARD !== "0";
 
 const MAX_TRACE_CHARS = 12_000;
 
@@ -61,6 +70,20 @@ export function ControlTowerExperience({
   const [replayMissionPrompt, setReplayMissionPrompt] = useState<string>("");
   const [judgeBefore, setJudgeBefore] = useState<GeminiJudgeResult | null>(null);
   const [judgeAfter, setJudgeAfter] = useState<GeminiJudgeResult | null>(null);
+
+  // Lot 1a (P0#5) — once the first verdict lands, scroll the judge
+  // section into view so the wow moment is never below the fold on
+  // 1080p screens. We intentionally fire on every transition to a
+  // non-null judgeBefore (re-runs included), since each one is a
+  // fresh "first verdict" against the currently audited trace.
+  const judgeSectionRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!judgeBefore) return;
+    judgeSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [judgeBefore]);
 
   const activeScenario = useMemo<TraceScenario | null>(
     () =>
@@ -159,12 +182,36 @@ export function ControlTowerExperience({
     replaySnapshot,
   ]);
 
-  const handleJudgeBefore = useCallback((result: GeminiJudgeResult) => {
-    setJudgeBefore(result);
-    // Always wipe the after-result when the user re-runs the main judge —
-    // the re-score must match the latest verdict, not a stale one.
-    setJudgeAfter(null);
-  }, []);
+  const handleJudgeBefore = useCallback(
+    (result: GeminiJudgeResult) => {
+      setJudgeBefore(result);
+      // Always wipe the after-result when the user re-runs the main judge —
+      // the re-score must match the latest verdict, not a stale one.
+      setJudgeAfter(null);
+
+      // Lot 3a (P1#21) — feed the cockpit scoreboard. Cost is sourced
+      // from the audited snapshot when available (scenario / replay) and
+      // omitted for free-form pasted traces (no real cost to attribute).
+      // The scoreboard component subscribes via `notifyScoreboardChange`
+      // so the new counts repaint without requiring a parent re-render.
+      if (SCOREBOARD_ENABLED) {
+        let costUsd: number | undefined;
+        if (selection.mode === "scenario" && activeScenario) {
+          costUsd = activeScenario.snapshot.observability.costUsd;
+        } else if (selection.mode === "replay" && replaySnapshot) {
+          costUsd = replaySnapshot.observability.costUsd;
+        }
+        const policyGateTriggered = result.policyGate?.triggered === true;
+        incrementCounter({
+          verdict: result.verdict,
+          costUsd,
+          policyGateTriggered,
+        });
+        notifyScoreboardChange();
+      }
+    },
+    [selection.mode, activeScenario, replaySnapshot],
+  );
 
   const guardrailsForActiveSource = useMemo<readonly string[]>(() => {
     if (selection.mode === "scenario" && activeScenario) {
@@ -184,15 +231,28 @@ export function ControlTowerExperience({
 
   return (
     <div className="flex flex-col gap-8">
-      <TraceScenarioPicker
-        scenarios={TRACE_SCENARIOS}
-        selection={selection}
-        onSelect={handleSelect}
-      />
+      {/*
+       * Lot 3a (P1#21) — cockpit scoreboard pinned at the top of the
+       * experience, just under the sticky 3-step stepper rendered by
+       * `page.tsx`. Reads counters from localStorage so a power user
+       * can quickly compare runs across reloads. Hidden in any env via
+       * `NEXT_PUBLIC_SCOREBOARD=0` (decision §6-G).
+       */}
+      {SCOREBOARD_ENABLED ? <CockpitScoreboard /> : null}
 
-      {/* Mode-specific input panel */}
+      {/* Lot 1c — id="pick" anchors the cockpit stepper top-bar. */}
+      <div id="pick" className="scroll-mt-24">
+        <TraceScenarioPicker
+          scenarios={TRACE_SCENARIOS}
+          selection={selection}
+          onSelect={handleSelect}
+          showReplayLink={liveAvailable}
+        />
+      </div>
+
+      {/* Mode-specific input panel — id="evidence" anchor. */}
       {selection.mode === "scenario" && activeScenario ? (
-        <section className="flex flex-col gap-5">
+        <section id="evidence" className="flex scroll-mt-24 flex-col gap-5">
           <ScenarioEvidenceTimeline scenario={activeScenario} />
           <ObservabilityPanel
             observability={activeScenario.snapshot.observability}
@@ -202,7 +262,7 @@ export function ControlTowerExperience({
       ) : null}
 
       {selection.mode === "pasted" ? (
-        <section className="flex flex-col gap-3">
+        <section id="evidence" className="flex scroll-mt-24 flex-col gap-3">
           <header className="flex flex-col gap-1">
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               2 · Paste your trace
@@ -212,18 +272,46 @@ export function ControlTowerExperience({
           <PastedTraceInput
             value={pastedTrace}
             onChange={setPastedTrace}
-            onLoadExample={() => {
-              const unsafe = findScenarioById(DEFAULT_SCENARIO_ID);
-              if (unsafe) setPastedTrace(unsafe.traceText);
+            // Lot 2c — three sample loaders wired on the canonical
+            // scenario ids. Loading any sample wipes the previous
+            // verdicts so the next click re-judges against the new
+            // pasted text (same logic as `handleSelect`).
+            onLoadUnsafe={() => {
+              const unsafe = findScenarioById("blocked_crm_write_agent");
+              if (unsafe) {
+                setPastedTrace(unsafe.traceText);
+                setJudgeBefore(null);
+                setJudgeAfter(null);
+              }
             }}
-            onClear={() => setPastedTrace("")}
+            onLoadSafe={() => {
+              const safe = findScenarioById("ready_research_agent");
+              if (safe) {
+                setPastedTrace(safe.traceText);
+                setJudgeBefore(null);
+                setJudgeAfter(null);
+              }
+            }}
+            onLoadMultiAgent={() => {
+              const multi = findScenarioById("multi_agent_escalation");
+              if (multi) {
+                setPastedTrace(multi.traceText);
+                setJudgeBefore(null);
+                setJudgeAfter(null);
+              }
+            }}
+            onClear={() => {
+              setPastedTrace("");
+              setJudgeBefore(null);
+              setJudgeAfter(null);
+            }}
             maxChars={MAX_TRACE_CHARS}
           />
         </section>
       ) : null}
 
       {selection.mode === "replay" ? (
-        <section className="flex flex-col gap-3">
+        <section id="evidence" className="flex scroll-mt-24 flex-col gap-3">
           <header className="flex flex-col gap-1">
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               2 · Replay the safe sample
@@ -242,8 +330,12 @@ export function ControlTowerExperience({
         </section>
       ) : null}
 
-      {/* Reliability judge */}
-      <section className="flex flex-col gap-3">
+      {/* Reliability judge — id="decide" anchor. */}
+      <section
+        id="decide"
+        ref={judgeSectionRef}
+        className="flex scroll-mt-24 flex-col gap-3"
+      >
         <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
           3 · Gemini decides: ship, review or block
         </h2>
@@ -254,6 +346,26 @@ export function ControlTowerExperience({
           actionLabel={actionLabelFor(selection.mode)}
           emptyHint={emptyHintFor(selection.mode)}
         />
+        {/*
+         * Lot 2b — production policies enforced card. Always rendered
+         * inside the Decide section so a judge sees the rule catalogue
+         * even before the first audit; once a verdict lands the card
+         * lights up which rules fired vs stayed armed.
+         */}
+        <ProductionPoliciesCard result={judgeBefore} />
+        {/*
+         * Lot 2b (P0#8) — Before/After is now part of the Decide
+         * section, lifted out of the Guardrails panel. Renders a
+         * placeholder for the After side as soon as the first verdict
+         * lands so the wow-moment frame is visible immediately.
+         */}
+        {judgeBefore ? (
+          <ReadinessComparison
+            before={judgeBefore}
+            after={judgeAfter}
+            showPlaceholderWhenAfterMissing
+          />
+        ) : null}
       </section>
 
       {/* Guardrails + re-score (only shown after the first verdict) */}
@@ -262,7 +374,6 @@ export function ControlTowerExperience({
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             4 · Add guardrails &amp; re-score
           </h2>
-          <ReadinessComparison before={judgeBefore} after={judgeAfter} />
           <GuardrailsPanel
             // Remount the panel when the audited trace changes so the
             // checkbox state never carries over between runs.

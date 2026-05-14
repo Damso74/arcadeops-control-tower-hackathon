@@ -5,6 +5,7 @@ import {
   Check,
   ClipboardCopy,
   DollarSign,
+  Download,
   Eye,
   FileWarning,
   ListChecks,
@@ -24,8 +25,10 @@ import type {
   GeminiVerdict,
   JudgeRequestBody,
 } from "@/lib/control-tower/gemini-types";
+import { findScenarioById } from "@/lib/control-tower/scenarios";
 
 import { Disclosure } from "./Disclosure";
+import { InfrastructureProofCard } from "./InfrastructureProofCard";
 
 interface GeminiJudgePanelProps {
   /**
@@ -60,6 +63,10 @@ type JudgeState =
   | { status: "ready"; result: GeminiJudgeResult }
   | { status: "error"; message: string };
 
+// Lot 1b (P0#6) — soft minimum window for the ticker animation so the
+// jury sees the 5-step narration even when Gemini is fast (sub-2s).
+const TICKER_MIN_DURATION_MS = 2000;
+
 export function GeminiJudgePanel({
   requestBody,
   onResult,
@@ -70,7 +77,14 @@ export function GeminiJudgePanel({
   const [available, setAvailable] = useState<boolean | null>(null);
   const [model, setModel] = useState<string | null>(null);
   const [state, setState] = useState<JudgeState>({ status: "idle" });
+  // Lot 2a — measured client-side round-trip of the most recent
+  // /api/gemini/judge call. Surfaced in the InfrastructureProofCard so
+  // the jury sees concrete end-to-end timing instead of guessing.
+  const [lastAuditLatencyMs, setLastAuditLatencyMs] = useState<number | null>(
+    null,
+  );
   const abortRef = useRef<AbortController | null>(null);
+  const minDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Discover availability at mount. Failures default to "not available" so
   // we never render a half-broken panel when /api/capabilities is down.
@@ -103,15 +117,51 @@ export function GeminiJudgePanel({
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      if (minDurationTimerRef.current) {
+        clearTimeout(minDurationTimerRef.current);
+        minDurationTimerRef.current = null;
+      }
     };
   }, []);
 
   const runJudge = useCallback(async () => {
     if (!requestBody) return;
     abortRef.current?.abort();
+    if (minDurationTimerRef.current) {
+      clearTimeout(minDurationTimerRef.current);
+      minDurationTimerRef.current = null;
+    }
     const controller = new AbortController();
     abortRef.current = controller;
+    const startedAt = Date.now();
     setState({ status: "loading" });
+
+    // Lot 1b — keep the loading state visible at least
+    // TICKER_MIN_DURATION_MS so the 5-step ticker is always perceivable
+    // by the jury, even when Gemini answers in <2s. We never *delay*
+    // the result past Gemini's actual latency once the floor is past.
+    const finalize = (next: JudgeState) => {
+      const elapsed = Date.now() - startedAt;
+      // Capture the *real* end-to-end latency once, regardless of the
+      // ticker floor — the InfrastructureProofCard always shows the
+      // genuine network timing, not the artificial UX delay.
+      if (next.status === "ready" || next.status === "error") {
+        setLastAuditLatencyMs(elapsed);
+      }
+      const remaining = Math.max(0, TICKER_MIN_DURATION_MS - elapsed);
+      if (remaining === 0) {
+        setState(next);
+        if (next.status === "ready") onResult?.(next.result);
+        return;
+      }
+      minDurationTimerRef.current = setTimeout(() => {
+        minDurationTimerRef.current = null;
+        // Bail out if the request was cancelled while we were waiting.
+        if (controller.signal.aborted) return;
+        setState(next);
+        if (next.status === "ready") onResult?.(next.result);
+      }, remaining);
+    };
 
     try {
       const res = await fetch("/api/gemini/judge", {
@@ -131,14 +181,13 @@ export function GeminiJudgePanel({
           payload && payload.ok === false
             ? payload.message || friendlyCodeMessage(payload.code)
             : `Gemini API error (HTTP ${res.status}).`;
-        setState({ status: "error", message });
+        finalize({ status: "error", message });
         return;
       }
-      setState({ status: "ready", result: payload.result });
-      onResult?.(payload.result);
+      finalize({ status: "ready", result: payload.result });
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
-      setState({
+      finalize({
         status: "error",
         message: (err as Error).message || "Failed to call Gemini.",
       });
@@ -150,26 +199,24 @@ export function GeminiJudgePanel({
   if (available === null) return null;
 
   if (!available) {
+    // Lot 1b (P1#40) — single-sentence, action-oriented copy aligned on
+    // the wording the master plan demands. The verbose paragraph that
+    // used to live here drowned the call-to-action.
     return (
       <aside
         aria-label="Gemini reliability agent availability"
-        className="flex flex-col gap-2 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-xs text-zinc-500"
+        className="flex flex-col gap-2 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-xs text-zinc-400"
       >
         <div>
           <JudgeModeBadge live={false} />
         </div>
-        <div>
-          <span className="font-medium text-zinc-400">
-            Gemini Reliability Agent
-          </span>{" "}
-          is available when configured. The page works fully without it — set{" "}
+        <p className="leading-relaxed">
+          Demo running in deterministic replay mode. Set{" "}
           <code className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-zinc-300">
             GEMINI_API_KEY
           </code>{" "}
-          to enable a live production-readiness verdict on every run. Until
-          then, deterministic replay drives the timeline so the demo stays
-          reproducible.
-        </div>
+          to enable live Gemini audit.
+        </p>
       </aside>
     );
   }
@@ -238,6 +285,8 @@ export function GeminiJudgePanel({
         </p>
       ) : null}
 
+      {state.status === "loading" ? <GeminiTicker /> : null}
+
       {state.status === "error" ? (
         <p
           role="status"
@@ -248,10 +297,32 @@ export function GeminiJudgePanel({
       ) : null}
 
       {state.status === "ready" ? (
-        <JudgeResultView result={state.result} />
+        <JudgeResultView
+          result={state.result}
+          lastAuditLatencyMs={lastAuditLatencyMs}
+          // Lot 3b (P5#46) — surface the Expected vs Actual badge in
+          // the decision card whenever the audited input is one of our
+          // canonical scenarios. The lookup is cheap and falls back to
+          // `null` for paste / replay modes (badge is then hidden).
+          expectedVerdict={resolveExpectedVerdict(requestBody)}
+        />
       ) : null}
     </section>
   );
+}
+
+/**
+ * Lot 3b — Map the in-flight judge request to the canonical scenario's
+ * expected verdict, when applicable. Returns `null` for non-scenario
+ * modes so the `<ExpectedVsActualBadge>` is suppressed (we cannot
+ * compare against an oracle for paste / replay traces).
+ */
+function resolveExpectedVerdict(
+  requestBody: JudgeRequestBody | null,
+): GeminiVerdict | null {
+  if (!requestBody || requestBody.mode !== "scenario_trace") return null;
+  const scenario = findScenarioById(requestBody.scenarioId);
+  return scenario?.expectedVerdict ?? null;
 }
 
 interface JudgeResultViewProps {
@@ -262,6 +333,26 @@ interface JudgeResultViewProps {
    * "After guardrails" panel to keep the comparison the wow moment.
    */
   collapseDetails?: boolean;
+  /**
+   * Lot 2a — Round-trip latency (ms) of the audit that produced
+   * `result`. When provided, the `InfrastructureProofCard` rendered
+   * under the decision surfaces it as "Last audit latency".
+   */
+  lastAuditLatencyMs?: number | null;
+  /**
+   * Lot 2a — When true, render the `InfrastructureProofCard` under
+   * the decision card. Defaults to `true` for the "before" view; the
+   * `JudgeResultView` re-mounted in the After comparison passes
+   * `false` to avoid duplicating the proof card twice on the page.
+   */
+  showInfrastructureProof?: boolean;
+  /**
+   * Lot 3b (P5#46) — Canonical scenario expected verdict. Rendered as
+   * an "Expected vs Gemini" badge in the decision card when set.
+   * `null` / `undefined` for non-scenario modes (paste / replay) — the
+   * badge is then suppressed.
+   */
+  expectedVerdict?: GeminiVerdict | null;
 }
 
 /**
@@ -279,6 +370,9 @@ interface JudgeResultViewProps {
 export function JudgeResultView({
   result,
   collapseDetails = false,
+  lastAuditLatencyMs,
+  showInfrastructureProof = true,
+  expectedVerdict = null,
 }: JudgeResultViewProps) {
   const sortedRisks = [...result.risks].sort(
     (a, b) => severityOrder(b.severity) - severityOrder(a.severity),
@@ -486,7 +580,11 @@ export function JudgeResultView({
 
   return (
     <div className="flex flex-col gap-6">
-      <DecisionCard result={result} />
+      <DecisionCard result={result} expectedVerdict={expectedVerdict} />
+
+      {showInfrastructureProof ? (
+        <InfrastructureProofCard lastAuditLatencyMs={lastAuditLatencyMs} />
+      ) : null}
 
       {collapseDetails ? (
         <Disclosure
@@ -505,7 +603,13 @@ export function JudgeResultView({
 
 /* ---------- Decision card ---------- */
 
-function DecisionCard({ result }: { result: GeminiJudgeResult }) {
+function DecisionCard({
+  result,
+  expectedVerdict,
+}: {
+  result: GeminiJudgeResult;
+  expectedVerdict?: GeminiVerdict | null;
+}) {
   const meta = verdictPalette(result.verdict);
   const Icon = meta.Icon;
   const reason = firstSentence(result.summary);
@@ -538,7 +642,14 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
                 extraCount={Math.max(0, policyGate.rules.length - 1)}
               />
             ) : null}
+            {expectedVerdict ? (
+              <ExpectedVsActualBadge
+                expected={expectedVerdict}
+                actual={result.verdict}
+              />
+            ) : null}
             <CopyAuditReportButton result={result} />
+            <ExportVerdictJsonButton result={result} />
           </div>
 
           {reason ? (
@@ -571,6 +682,73 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
       </div>
     </article>
   );
+}
+
+/* ---------- Expected vs Actual badge ---------- */
+
+/**
+ * Lot 3b (P5#46) — Compact "Expected: X · Gemini: Y · Match: yes/no"
+ * pill rendered next to the verdict badge whenever the audited input
+ * is one of our canonical scenarios. Lets a jury verify at a glance
+ * that Gemini agrees (or disagrees) with the trace's documented
+ * expected verdict — an instant credibility signal even when the
+ * underlying audit text is dense.
+ *
+ * Color tone follows the Match outcome:
+ *   - emerald when the match holds (Gemini matched the expected call),
+ *   - rose when it doesn't (instructive surprise — usually still ok,
+ *     but worth pointing out so the jury knows we surface it honestly).
+ *
+ * Pure presentational — no state, no fetches.
+ */
+function ExpectedVsActualBadge({
+  expected,
+  actual,
+}: {
+  expected: GeminiVerdict;
+  actual: GeminiVerdict;
+}) {
+  const matched = expected === actual;
+  const expectedLabel = formatVerdictShort(expected);
+  const actualLabel = formatVerdictShort(actual);
+  const tone = matched
+    ? "border-emerald-400/40 bg-emerald-400/[0.08] text-emerald-100"
+    : "border-rose-400/40 bg-rose-400/[0.08] text-rose-100";
+  return (
+    <span
+      role="status"
+      aria-label={
+        matched
+          ? `Expected ${expectedLabel}, Gemini agreed with ${actualLabel}.`
+          : `Expected ${expectedLabel}, Gemini decided ${actualLabel} — mismatch.`
+      }
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tone}`}
+    >
+      <span className="text-zinc-400/90">Expected</span>
+      <span className="font-mono">{expectedLabel}</span>
+      <span aria-hidden className="text-zinc-500">
+        ·
+      </span>
+      <span className="text-zinc-400/90">Gemini</span>
+      <span className="font-mono">{actualLabel}</span>
+      <span aria-hidden className="text-zinc-500">
+        ·
+      </span>
+      <span className="text-zinc-400/90">Match</span>
+      <span className="font-mono">{matched ? "yes" : "no"}</span>
+    </span>
+  );
+}
+
+function formatVerdictShort(v: GeminiVerdict): string {
+  switch (v) {
+    case "blocked":
+      return "BLOCKED";
+    case "needs_review":
+      return "REVIEW";
+    case "ready":
+      return "READY";
+  }
 }
 
 /* ---------- Copy audit report ---------- */
@@ -638,6 +816,54 @@ function CopyAuditReportButton({ result }: { result: GeminiJudgeResult }) {
           Copy audit report
         </>
       )}
+    </button>
+  );
+}
+
+/* ---------- Export verdict JSON ---------- */
+
+/**
+ * Lot 2c (P2#27) — small "Export verdict JSON" button that
+ * downloads the raw `GeminiJudgeResult` as a `verdict.json` blob.
+ * Useful for jurys who want to keep a clean machine-readable record
+ * of what Gemini + ArcadeOps decided on each scenario.
+ *
+ * Pure client-side: no fetch, no global state. Safari mobile lacks a
+ * native download prompt, so we fall back to opening the blob URL in
+ * a new tab — the user can then save it manually.
+ */
+function ExportVerdictJsonButton({ result }: { result: GeminiJudgeResult }) {
+  const onClick = useCallback(() => {
+    try {
+      const json = JSON.stringify(result, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const filename = `arcadeops-verdict-${result.verdict}-${Date.now()}.json`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      // Some browsers ignore the `download` attribute on anchors that
+      // are not in the DOM — append/click/remove keeps the dance
+      // cross-browser without leaking the node.
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Revoke async so Safari has time to honour the download.
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch {
+      // Swallow — worst case the user does not get the file.
+    }
+  }, [result]);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Export verdict as JSON"
+      className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:border-white/30 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+    >
+      <Download className="h-3 w-3" aria-hidden />
+      Export verdict JSON
     </button>
   );
 }
@@ -881,6 +1107,71 @@ function Spinner() {
       aria-hidden
       className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
     />
+  );
+}
+
+/**
+ * Lot 1b (P0#6) — narrative ticker shown while Gemini is auditing.
+ * Cycles through the 5 step messages every 600ms (full loop ~3s,
+ * matches the master plan's "2-4s animation" requirement). Each step
+ * is always rendered so the jury sees the whole pipeline; the active
+ * step is highlighted, prior steps are dimmed but checked, future
+ * steps are muted. The cycle wraps so the ticker keeps moving even
+ * when Gemini takes longer than 3s on cold latency.
+ */
+const TICKER_MESSAGES: readonly string[] = [
+  "Reading agent trace…",
+  "Checking tool calls…",
+  "Detecting external side effects…",
+  "Applying production policies…",
+  "Generating Gemini verdict…",
+];
+const TICKER_STEP_MS = 600;
+
+function GeminiTicker() {
+  const [activeIdx, setActiveIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveIdx((i) => (i + 1) % TICKER_MESSAGES.length);
+    }, TICKER_STEP_MS);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Gemini audit in progress"
+      className="flex flex-col gap-1.5 rounded-lg border border-violet-400/20 bg-violet-500/[0.06] px-4 py-3"
+    >
+      {TICKER_MESSAGES.map((msg, i) => {
+        const isActive = i === activeIdx;
+        const isPast = i < activeIdx;
+        return (
+          <div
+            key={msg}
+            className={[
+              "flex items-center gap-2 text-xs transition-colors",
+              isActive
+                ? "text-violet-100"
+                : isPast
+                  ? "text-zinc-400"
+                  : "text-zinc-600",
+            ].join(" ")}
+          >
+            <span aria-hidden className="inline-flex h-3.5 w-3.5 flex-none items-center justify-center">
+              {isActive ? (
+                <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-violet-300" />
+              ) : isPast ? (
+                <Check className="h-3 w-3 text-emerald-300" aria-hidden />
+              ) : (
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/15" />
+              )}
+            </span>
+            <span className="font-mono text-[11px]">{msg}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

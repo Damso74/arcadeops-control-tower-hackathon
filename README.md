@@ -1,6 +1,8 @@
 # ArcadeOps Control Tower
 
-> **Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship.**
+> **Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.**
+>
+> _<sub>Originally pitched as: "Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship." — same idea, sharper words.</sub>_
 
 [![Live on Vercel](https://img.shields.io/badge/live%20demo-vercel-black?logo=vercel)](https://arcadeops-control-tower-hackathon.vercel.app/control-tower)
 [![Runner on Vultr](https://img.shields.io/badge/runner-vultr%20fra%20%E2%80%A2%20auth-007BFC?logo=vultr&logoColor=white)](http://136.244.89.159/health)
@@ -21,37 +23,50 @@ Built end-to-end in seven days for the **Milan AI Week 2026** hackathon
 
 ## Live demo
 
-### 60-second jury tour (clickable, no setup)
+### 60-second jury tour (clickable, no setup) — cockpit V2
 
 1. Open <https://arcadeops-control-tower-hackathon.vercel.app/control-tower>.
-2. Scroll to **panel 1 · Pick an agent run** and hit the small dotted
-   text link **"Or replay the deterministic safe sample (no key
-   required)"** at the bottom of the panel — this swaps panel 2 to the
-   live-mode launcher.
-3. Click the green **⚡ Run live with ArcadeOps backend** button (with
-   the violet **"Gemini + Vultr"** inline pill) that just appeared in
-   panel 2. Watch phase pills, the execution timeline, tool calls
-   (`kb.search`, `crm.lookup`, `policy.check`, `email.draft`,
-   `approval.request`, `audit.log` …), the observability panel and the
-   BLOCKED verdict stream in live.
-4. Click **Run Gemini reliability judge** in panel 3. A second Gemini
-   call audits the trace and produces a structured verdict (top risks,
-   missing evidence, remediation plan).
-5. Toggle guardrails in panel **4** and **Re-score with guardrails** to
-   see the verdict flip from `Block` to `Ship`.
+2. The page lands directly on the cockpit hero with the V2 punchline,
+   a sticky **3-step stepper** (`1 Pick · 2 Inspect · 3 Decide`) and a
+   **Recommended demo path** banner. Below it sits a **Critical
+   scenario card** (red border, `Recommended demo path` chip) for the
+   `Multi-agent customer escalation` run — click it.
+3. Scroll to **panel 3 · Decide** and hit the purple **Run Gemini
+   judge** button. The `<GeminiTicker>` animation cycles for **about 4
+   seconds** (`Reading agent trace · Checking tool calls · Detecting
+   side effects · Applying production policies · Generating verdict`).
+4. The **Decision card** scrolls into view: `BLOCKED` verdict with
+   readiness score, the **Expected vs Gemini badge** (`Match: yes`),
+   the triggered **policy gates** chip, and the **Copy audit report** +
+   **Export verdict JSON** buttons.
+5. Just below, the **Production policies card** lists the five
+   non-negotiable rules (3 fired in red, 2 still armed), the
+   **Infrastructure proof card** shows the live Vultr Frankfurt status
+   + last audit latency, and the **Cockpit scoreboard** at the top has
+   ticked `Runs audited: 1 · Blocked: 1 · High-risk calls blocked: 1`.
+6. Toggle guardrails in panel **4 · Apply guardrails** and **Re-score
+   with guardrails** to see the readiness score climb from `BLOCKED`
+   to `READY` in the **Before / After** comparison.
 
-> The green button is the **only** Vultr + Gemini live trigger. The
-> purple **"Run Gemini judge"** button further down (panel 3 in scenario
-> mode) only audits the bundled scenario trace fixture — it is not the
-> live path and will not produce the 23 s / 16 k tokens / $0.0014
-> numbers reported below.
+> The cockpit V2 UI is **decision-first**: the public production
+> deployment intentionally hides the green **⚡ Run live with ArcadeOps
+> backend** button (130 s wall-clock per run is too long for a jury
+> demo). The button is gated by `NEXT_PUBLIC_LIVE_VULTR=1` and stays
+> available for internal director's-cut demos — see the section just
+> below. The Vultr live runtime is still proven publicly through the
+> **Infrastructure proof card** (Vultr region + live audit latency,
+> polled every few seconds against the runner `/health` endpoint).
 
-Everything runs against a real Vultr VM in Frankfurt (`fra`) protected
-by a `x-runner-secret` header (set as Vercel env vars). The
+### Internal director's cut — live Vultr + Gemini run (130 s)
+
+Set `NEXT_PUBLIC_LIVE_VULTR=1` locally (or in a Vercel preview branch)
+to expose the green **⚡ Run live with ArcadeOps backend** button. It
+hits a real Vultr VM in Frankfurt (`fra`) protected by an
+`x-runner-secret` header (set as Vercel env vars). The
 `GEMINI_API_KEY` lives only on the VM; it never reaches the browser or
 any Vercel env.
 
-### One-curl proof (server-side)
+### One-curl proof (server-side, always live)
 
 ```bash
 curl -sS -X POST \
@@ -60,10 +75,16 @@ curl -sS -X POST \
   -d '{"mission":"VIP customer threatens to churn after SLA breach"}'
 ```
 
+The `/api/runner-proxy` route is server-side and **not** affected by
+`NEXT_PUBLIC_LIVE_VULTR`. It always proxies to the live Vultr runner
+behind the `x-runner-secret` middleware, so jury reviewers who want
+raw evidence can run the curl in their own terminal at any time.
+
 Last smoke (Lot 5 FULL, `2026-05-13`, post re-provision) — `HTTP 200`,
 `23.44 s` wall-clock, `16 322` Gemini tokens, `$0.001424` total cost,
-verdict `BLOCKED` (3 policy gates), 8 trace steps, 7 tool calls,
-`is_mocked: false`. Run id `1f97ad20ab8f47949d77913e57817d0f`.
+verdict `BLOCKED` (3 policy gates triggered out of the 5 armed in
+cockpit V2), 8 trace steps, 7 tool calls, `is_mocked: false`. Run id
+`1f97ad20ab8f47949d77913e57817d0f`.
 
 ### Architecture (Lot 5 FULL hardening)
 
@@ -105,10 +126,12 @@ flowchart LR
         Gemini[gemini-2.5-flash]
     end
 
-    subgraph ArcadeOpsGates["ArcadeOps policy gates (deterministic)"]
+    subgraph ArcadeOpsGates["ArcadeOps policy gates (deterministic, 5 rules)"]
         Gate1[crm_writes_require_approval]
         Gate2[external_email_requires_approval]
         Gate3[prompt_injection_must_be_blocked]
+        Gate4[write_without_audit_blocked]
+        Gate5[require_replay_id]
     end
 
     User --> UI
@@ -133,16 +156,28 @@ diagrams see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Why we win
 
+- **Decision-first cockpit (V2).** The `/control-tower` page is a
+  guided 3-step flow with a sticky stepper (`Pick · Inspect · Decide`),
+  a Recommended demo banner and a Critical scenario card. The Decision
+  card surfaces verdict, readiness score, **Expected vs Gemini badge**
+  (`Match: yes/no` against the documented expected verdict), policy
+  gates and **Copy audit report** + **Export verdict JSON** buttons.
+  The Production policies card lists the **5 deterministic rules**, the
+  Infrastructure proof card shows live Vultr region + audit latency,
+  the Cockpit scoreboard ticks in real time. No more "where do I
+  click?" — every jury reviewer hits the wow path on first scroll.
 - **Real multi-agent design, not a single-shot prompt.** A Planner emits
   a strict JSON plan (no tools, anti-injection in the system prompt) and
   a Worker executes it via Gemini function calling against ten typed
   mocked tools. Every step is logged with role, phase, summary, tool
   call args, result, latency and risk level.
-- **Three policy gates that actually block.** ArcadeOps Control Tower
-  applies deterministic, server-side gates after Gemini reasoning.
-  In our flagship "VIP churn" run, three of them fire and force a
-  `BLOCKED` verdict — no destructive CRM write, no outbound email, no
-  prompt-injected payload reaches a real system.
+- **Five policy gates that actually block.** ArcadeOps Control Tower
+  applies deterministic, server-side gates after Gemini reasoning:
+  `crm_writes_require_approval`, `external_email_requires_approval`,
+  `prompt_injection_must_be_blocked`, `write_without_audit_blocked`,
+  `require_replay_id`. In our flagship "VIP churn" run, three of them
+  fire and force a `BLOCKED` verdict — no destructive CRM write, no
+  outbound email, no prompt-injected payload reaches a real system.
 - **Live proof, not slideware.** Every figure in this README comes from
   a real `2026-05-13` smoke against production (post Lot 5 FULL
   re-provision): 23.44 s wall-clock, 16 322 Gemini tokens, $0.001424
@@ -186,9 +221,9 @@ diagrams see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ## How to demo in 60 seconds (curl-only fallback)
 
 > The clickable jury tour is **§ "Live demo · 60-second jury tour"**
-> above (with the prerequisite click on the *replay the deterministic
-> safe sample* link). The terminal-only path below is the back-up if
-> the UI misbehaves on demo day.
+> above. The terminal-only path below is the back-up if the UI
+> misbehaves on demo day, and works against the same live Vultr +
+> Gemini pipeline regardless of `NEXT_PUBLIC_LIVE_VULTR`.
 
 1. Open https://arcadeops-control-tower-hackathon.vercel.app
 2. In a terminal, paste:
@@ -206,8 +241,8 @@ diagrams see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 4. Scroll to `verdict`. Read the three triggered policy gates. Read the
    prompt-injected `customer_note` flagged as a `CRITICAL`
    `prompt_injection` finding.
-5. Punchline: **"Gemini ran the agent. Vultr ran the workflow.
-   ArcadeOps refused to ship it."**
+5. Punchline: **"Gemini judges. Vultr runs. ArcadeOps blocks unsafe
+   autonomous agents before production."**
 
 Full script with B-roll and timing — [`docs/VIDEO_SCRIPT_90S.md`](docs/VIDEO_SCRIPT_90S.md).
 

@@ -103,8 +103,8 @@ If `tokens` ≈ 0 or `mocked` is `true`, see §4 (Plan B).
 
 ### 0:00 → 0:10 — Hook
 
-> **Say:** *"ArcadeOps Control Tower. Gemini runs the agent. Vultr
-> executes the workflow. ArcadeOps decides if it can ship. Let me
+> **Say:** *"ArcadeOps Control Tower. Gemini judges. Vultr runs.
+> ArcadeOps blocks unsafe autonomous agents before production. Let me
 > prove it live."*
 
 > **Click:** focus the `/control-tower` tab full-screen.

@@ -43,6 +43,13 @@ export default function Home() {
             A Gemini-powered production gate
             <br className="hidden sm:block" /> for autonomous AI agents.
           </h1>
+          {/* Lot 4a — V2 punchline displayed verbatim under the hero so
+              the same sentence shows up in the cockpit, the deck, the
+              README and the video script. Decision §6-A acted. */}
+          <p className="max-w-2xl text-balance text-base font-semibold text-emerald-200 sm:text-lg">
+            Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents
+            before production.
+          </p>
           <p className="max-w-2xl text-base leading-relaxed text-zinc-300 sm:text-lg">
             ArcadeOps lets autonomous agents use tools, delegate to sub-agents,
             and execute business workflows. Control Tower audits every run with

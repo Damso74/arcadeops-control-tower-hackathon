@@ -28,6 +28,12 @@ interface TraceScenarioPickerProps {
   onSelect: (selection: ScenarioPickerSelection) => void;
   /** Disabled while a Gemini judge call is in flight. */
   disabled?: boolean;
+  /**
+   * Whether the deterministic SSE replay link should be exposed.
+   * Gated server-side by `NEXT_PUBLIC_LIVE_VULTR === "1"` to keep the
+   * picker focused on the 3 scenarios + paste in production demos.
+   */
+  showReplayLink?: boolean;
 }
 
 /**
@@ -47,6 +53,7 @@ export function TraceScenarioPicker({
   selection,
   onSelect,
   disabled,
+  showReplayLink = false,
 }: TraceScenarioPickerProps) {
   const critical = scenarios.find((s) => s.riskLevel === "critical") ?? null;
   const others = scenarios.filter((s) => s.riskLevel !== "critical");
@@ -106,11 +113,13 @@ export function TraceScenarioPicker({
           />
         </div>
 
-        <ReplayLink
-          selected={selection.mode === "replay"}
-          disabled={disabled}
-          onSelect={() => onSelect({ mode: "replay", scenarioId: null })}
-        />
+        {showReplayLink ? (
+          <ReplayLink
+            selected={selection.mode === "replay"}
+            disabled={disabled}
+            onSelect={() => onSelect({ mode: "replay", scenarioId: null })}
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -227,7 +236,7 @@ function SecondaryScenarioCard({
         aria-hidden
         className={`mt-auto inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ${palette.cta}`}
       >
-        {ctaLabel(scenario.riskLevel)}
+        {SECONDARY_CTA_LABEL}
         <ArrowRight className="h-3 w-3" aria-hidden />
       </span>
     </button>
@@ -329,13 +338,19 @@ function renderSecondaryIcon(level: ScenarioRiskLevel) {
   }
 }
 
+// Lot 3b (P1#19) — micro-copies rewritten with action verbs and a
+// stake. Each line names the agent's intent first, then the production
+// signal a reviewer should pay attention to (confidence threshold,
+// audit trail, destructive write). Keeps the picker scannable on 1080p
+// while raising the narrative tension before the verdict drops.
 function secondaryDescription(scenario: TraceScenario): string {
   switch (scenario.expectedVerdict) {
     case "needs_review":
-      return "Customer replies without confidence thresholds.";
+      return "Drafts customer replies without a confidence floor — ship or escalate?";
     case "ready":
-      return "Read-only research workflow with audit trail.";
+      return "Reads sources only, every step audited — green-light candidate.";
     case "blocked":
+      return "Tries to mass-update CRM deals via destructive writes, no approval — block or let it ship?";
     default:
       return scenario.shortDescription;
   }
@@ -385,14 +400,7 @@ function riskPalette(level: ScenarioRiskLevel): {
   }
 }
 
-function ctaLabel(level: ScenarioRiskLevel): string {
-  switch (level) {
-    case "critical":
-      return "Audit unsafe run";
-    case "medium":
-      return "Review this run";
-    case "low":
-    default:
-      return "Audit this run";
-  }
-}
+// Lot 1a (P0#3) — uniform CTA across the 3 scenario tiers so the
+// picker reads as "audit any of these runs" instead of mixing
+// "Audit unsafe / Review this / Audit this".
+const SECONDARY_CTA_LABEL = "Audit this run";

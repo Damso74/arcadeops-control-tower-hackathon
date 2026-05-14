@@ -6,7 +6,15 @@ import { useId, useMemo } from "react";
 interface PastedTraceInputProps {
   value: string;
   onChange: (next: string) => void;
-  onLoadExample?: () => void;
+  /**
+   * Lot 2c — three sample loaders (replaces the legacy single
+   * `onLoadExample`). Each callback wires to the matching scenario's
+   * `traceText` in `ControlTowerExperience`. Keeping them as
+   * individual props avoids a sprawling discriminated-union API.
+   */
+  onLoadUnsafe?: () => void;
+  onLoadSafe?: () => void;
+  onLoadMultiAgent?: () => void;
   onClear?: () => void;
   /** Hard cap mirrored from the server route to fail fast in the browser. */
   maxChars: number;
@@ -25,7 +33,9 @@ Gemini will judge whether this run is production-ready.`;
 export function PastedTraceInput({
   value,
   onChange,
-  onLoadExample,
+  onLoadUnsafe,
+  onLoadSafe,
+  onLoadMultiAgent,
   onClear,
   maxChars,
 }: PastedTraceInputProps) {
@@ -74,15 +84,33 @@ export function PastedTraceInput({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          {onLoadExample ? (
-            <button
-              type="button"
-              onClick={onLoadExample}
-              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 font-medium text-zinc-200 transition-colors hover:border-white/20 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
-            >
-              Load unsafe example
-            </button>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {/*
+           * Lot 2c (P1#12) — 3 sample loaders side by side. Each one
+           * loads the matching scenario's traceText so the jury can
+           * audit a real production-grade unsafe / safe / multi-agent
+           * sample without typing anything.
+           */}
+          {onLoadUnsafe ? (
+            <SampleLoaderButton
+              tone="red"
+              label="Load unsafe CRM trace"
+              onClick={onLoadUnsafe}
+            />
+          ) : null}
+          {onLoadSafe ? (
+            <SampleLoaderButton
+              tone="emerald"
+              label="Load safe research trace"
+              onClick={onLoadSafe}
+            />
+          ) : null}
+          {onLoadMultiAgent ? (
+            <SampleLoaderButton
+              tone="amber"
+              label="Load multi-agent escalation trace"
+              onClick={onLoadMultiAgent}
+            />
           ) : null}
           {value.length > 0 && onClear ? (
             <button
@@ -109,5 +137,42 @@ export function PastedTraceInput({
         </p>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Small tone-aware button used by the 3 sample loaders. Tones are
+ * tied to the scenario verdict so the jury can read the affordance
+ * at a glance: red = unsafe, emerald = safe, amber = needs review /
+ * multi-agent escalation.
+ */
+function SampleLoaderButton({
+  tone,
+  label,
+  onClick,
+}: {
+  tone: "red" | "emerald" | "amber";
+  label: string;
+  onClick: () => void;
+}) {
+  const palette = (() => {
+    switch (tone) {
+      case "red":
+        return "border-red-400/30 bg-red-400/[0.06] text-red-100 hover:border-red-400/60 hover:bg-red-400/[0.12]";
+      case "emerald":
+        return "border-emerald-400/30 bg-emerald-400/[0.06] text-emerald-100 hover:border-emerald-400/60 hover:bg-emerald-400/[0.12]";
+      case "amber":
+      default:
+        return "border-amber-400/30 bg-amber-400/[0.06] text-amber-100 hover:border-amber-400/60 hover:bg-amber-400/[0.12]";
+    }
+  })();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-md border px-3 py-1.5 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 ${palette}`}
+    >
+      {label}
+    </button>
   );
 }

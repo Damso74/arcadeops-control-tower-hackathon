@@ -1,8 +1,10 @@
-import { ArrowRight, Gauge, ShieldAlert, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 
 import { ArcadeOpsRuntimeSection } from "@/components/control-tower/ArcadeOpsRuntimeSection";
+import { CockpitStepper } from "@/components/control-tower/CockpitStepper";
 import { ControlTowerExperience } from "@/components/control-tower/ControlTowerExperience";
+import { RecommendedDemoBanner } from "@/components/control-tower/RecommendedDemoBanner";
 import type { ControlTowerModeAvailability } from "@/lib/control-tower/types";
 
 export const metadata: Metadata = {
@@ -18,14 +20,18 @@ export const metadata: Metadata = {
 // /api/capabilities so a key added post-deploy enables the judge without a
 // rebuild.
 //
-// Lot 5 FULL: the live backend is now the Vultr FastAPI runner, surfaced
-// to Vercel as `RUNNER_URL`. The optional `RUNNER_SECRET` is enforced
-// server-side through `runnerHeaders()` — it is never required for the
-// availability check itself (a missing secret degrades to "no auth header",
-// which the runner accepts when its kill-switch `RUNNER_REQUIRE_SECRET=0`).
+// Lot 1a (Décision §6-B) — the live ArcadeOps mode (Vultr FastAPI runner,
+// `⚡ Run live with ArcadeOps backend` button + deterministic SSE replay
+// link in the picker) is gated by an explicit env kill-switch
+// `NEXT_PUBLIC_LIVE_VULTR === "1"` instead of the implicit presence of
+// `RUNNER_URL`. AGENTS.md acts the rationale: 130s/run is too long for
+// jury demo, the official video films Replay only, the live mode stays
+// available for internal demos when explicitly enabled. `RUNNER_URL`
+// remains required server-side for `/api/arcadeops/run` to actually
+// reach the Vultr backend — the kill-switch only controls UI exposure.
 function detectModeAvailability(): ControlTowerModeAvailability {
-  const runnerUrl = process.env.RUNNER_URL?.trim();
-  return { replay: true, live: Boolean(runnerUrl) };
+  const liveEnabled = process.env.NEXT_PUBLIC_LIVE_VULTR === "1";
+  return { replay: true, live: liveEnabled };
 }
 
 export default function ControlTowerPage() {
@@ -38,33 +44,34 @@ export default function ControlTowerPage() {
   return (
     <div className="min-h-dvh bg-zinc-950 text-zinc-100">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 sm:px-10 sm:py-12">
-        {/* Hero — decision-first, single fold */}
-        <header className="flex flex-col gap-4">
+        {/* Hero — decision-first, single fold (Lot 1d compaction) */}
+        <header className="flex flex-col gap-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-emerald-300">
             ArcadeOps Control Tower
           </p>
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
             A Gemini-powered production gate for autonomous AI agents.
           </h1>
-          <p className="max-w-3xl text-base leading-relaxed text-zinc-300 sm:text-lg">
-            Replay or paste an ArcadeOps agent trace. Control Tower audits
-            tools, sub-agents, costs, approvals and risky outputs, then decides
-            whether the run should ship, need review, or be blocked.
+          {/* Lot 4a (Décision §6-A) — V2 main punchline displayed
+              verbatim. Same sentence in `/`, `/control-tower`,
+              `README.md`, `docs/SUBMISSION_LABLAB.md`,
+              `docs/VIDEO_SCRIPT_90S.md`, `docs/DECK_OUTLINE.md`,
+              `docs/HOW_TO_DEMO.md`, and the SEO description. */}
+          <p className="max-w-3xl text-balance text-base font-semibold text-emerald-200 sm:text-lg">
+            Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents
+            before production.
           </p>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="violet" icon={<Sparkles className="h-3 w-3" aria-hidden />}>
-              Powered by Gemini
-            </Badge>
-            <Badge tone="emerald" icon={<Gauge className="h-3 w-3" aria-hidden />}>
-              Deterministic replay
-            </Badge>
-            <Badge tone="red" icon={<ShieldAlert className="h-3 w-3" aria-hidden />}>
-              Production gate
-            </Badge>
-          </div>
-
-          {/* Compact one-line flow — used to be three big cards */}
+          {/* Lot 3b (P2#24) — secondary punchline kept as a quiet
+              italic frame under the V2 line. Italic + zinc-400 so it
+              doesn't compete with the main pitch — it reframes it. */}
+          <p className="max-w-3xl text-sm italic text-zinc-400 sm:text-base">
+            Logs tell you what happened. ArcadeOps decides whether what happened
+            is safe enough to ship.
+          </p>
+          {/* Compact one-line flow — replaces the deprecated 3-badge row.
+              The 3 capability badges (Powered by Gemini / Deterministic
+              replay / Production gate) live in `ArcadeOpsRuntimeSection`
+              MetaBadges so the hero stays under 3 lines on 1080p. */}
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
             <FlowStep n={1}>Pick a multi-agent run</FlowStep>
             <ArrowRight aria-hidden className="h-3 w-3 text-zinc-600" />
@@ -78,6 +85,10 @@ export default function ControlTowerPage() {
             </FlowStep>
           </p>
         </header>
+
+        <CockpitStepper />
+
+        <RecommendedDemoBanner />
 
         <ControlTowerExperience liveAvailable={availability.live} />
 
@@ -93,30 +104,6 @@ export default function ControlTowerPage() {
         </footer>
       </div>
     </div>
-  );
-}
-
-function Badge({
-  tone,
-  icon,
-  children,
-}: {
-  tone: "violet" | "emerald" | "red";
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const palette = {
-    violet: "bg-violet-500/15 text-violet-200",
-    emerald: "bg-emerald-400/15 text-emerald-200",
-    red: "bg-red-400/15 text-red-200",
-  }[tone];
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${palette}`}
-    >
-      {icon}
-      {children}
-    </span>
   );
 }
 
