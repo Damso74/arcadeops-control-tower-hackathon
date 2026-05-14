@@ -2,6 +2,7 @@ import { ArrowRight, Gauge, ShieldAlert, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 
 import { ArcadeOpsRuntimeSection } from "@/components/control-tower/ArcadeOpsRuntimeSection";
+import { CockpitStepper } from "@/components/control-tower/CockpitStepper";
 import { ControlTowerExperience } from "@/components/control-tower/ControlTowerExperience";
 import type { ControlTowerModeAvailability } from "@/lib/control-tower/types";
 
@@ -82,6 +83,8 @@ export default function ControlTowerPage() {
             </FlowStep>
           </p>
         </header>
+
+        <CockpitStepper />
 
         <ControlTowerExperience liveAvailable={availability.live} />
 

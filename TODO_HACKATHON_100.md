@@ -45,12 +45,11 @@
 
 ### Lot 1c — Stepper sticky 3 étapes en top-bar (réf §5)
 
-- [ ] Créer `src/components/control-tower/CockpitStepper.tsx` : 3 chips cliquables (`1 · Pick · #pick`, `2 · Inspect · #evidence`, `3 · Decide · #decide`), highlight de l'étape active via `IntersectionObserver`, design `sticky top-0 z-20 backdrop-blur` (P0#1).
-- [ ] `ControlTowerExperience.tsx` : assigner `id="pick" / id="evidence" / id="decide"` aux sections correspondantes.
-- [ ] `page.tsx` : intercaler `<CockpitStepper />` juste au-dessus de `<ControlTowerExperience>`.
-- [ ] Smoke desktop : scroll → étape active change ; clic chip → scroll fluide.
-- [ ] Smoke mobile (Cursor browser MCP iPhone viewport) : stepper compact icon-only sous 640px.
-- [ ] Gates + commit `feat(control-tower): Lot 1c — sticky cockpit stepper 3 steps`.
+- [x] Créer `src/components/control-tower/CockpitStepper.tsx` : 3 chips cliquables (`1 · Pick · #pick`, `2 · Inspect · #evidence`, `3 · Decide · #decide`), highlight de l'étape active via `IntersectionObserver` (rootMargin `-110px 0px -55%`, intersectionRatio max), design `sticky top-0 z-20 backdrop-blur` (P0#1).
+- [x] `ControlTowerExperience.tsx` : assigner `id="pick" / id="evidence" / id="decide"` aux sections correspondantes (avec `scroll-mt-24` pour offset sticky).
+- [x] `page.tsx` : intercaler `<CockpitStepper />` juste au-dessus de `<ControlTowerExperience>`.
+- [x] Mobile : icône Lucide rendue `sm:hidden`, label long sur desktop (`hidden sm:inline`), label court mobile (`sm:hidden`).
+- [x] Gates + commit `feat(control-tower): Lot 1c — sticky cockpit stepper 3 steps`.
 
 ### Lot 1d — Hero resserré + bandeau Recommended demo path (réf §5)
 

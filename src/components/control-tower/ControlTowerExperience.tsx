@@ -198,16 +198,19 @@ export function ControlTowerExperience({
 
   return (
     <div className="flex flex-col gap-8">
-      <TraceScenarioPicker
-        scenarios={TRACE_SCENARIOS}
-        selection={selection}
-        onSelect={handleSelect}
-        showReplayLink={liveAvailable}
-      />
+      {/* Lot 1c — id="pick" anchors the cockpit stepper top-bar. */}
+      <div id="pick" className="scroll-mt-24">
+        <TraceScenarioPicker
+          scenarios={TRACE_SCENARIOS}
+          selection={selection}
+          onSelect={handleSelect}
+          showReplayLink={liveAvailable}
+        />
+      </div>
 
-      {/* Mode-specific input panel */}
+      {/* Mode-specific input panel — id="evidence" anchor. */}
       {selection.mode === "scenario" && activeScenario ? (
-        <section className="flex flex-col gap-5">
+        <section id="evidence" className="flex scroll-mt-24 flex-col gap-5">
           <ScenarioEvidenceTimeline scenario={activeScenario} />
           <ObservabilityPanel
             observability={activeScenario.snapshot.observability}
@@ -217,7 +220,7 @@ export function ControlTowerExperience({
       ) : null}
 
       {selection.mode === "pasted" ? (
-        <section className="flex flex-col gap-3">
+        <section id="evidence" className="flex scroll-mt-24 flex-col gap-3">
           <header className="flex flex-col gap-1">
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               2 · Paste your trace
@@ -238,7 +241,7 @@ export function ControlTowerExperience({
       ) : null}
 
       {selection.mode === "replay" ? (
-        <section className="flex flex-col gap-3">
+        <section id="evidence" className="flex scroll-mt-24 flex-col gap-3">
           <header className="flex flex-col gap-1">
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               2 · Replay the safe sample
@@ -257,8 +260,12 @@ export function ControlTowerExperience({
         </section>
       ) : null}
 
-      {/* Reliability judge */}
-      <section ref={judgeSectionRef} className="flex flex-col gap-3">
+      {/* Reliability judge — id="decide" anchor. */}
+      <section
+        id="decide"
+        ref={judgeSectionRef}
+        className="flex scroll-mt-24 flex-col gap-3"
+      >
         <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
           3 · Gemini decides: ship, review or block
         </h2>
