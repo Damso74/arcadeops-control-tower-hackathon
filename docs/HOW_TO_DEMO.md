@@ -21,7 +21,26 @@
 
 ## 2. Pre-demo health check (run 5 minutes before)
 
-Run all four of these and confirm green:
+### One-command pre-flight check (recommended, Windows / PowerShell)
+
+```powershell
+.\scripts\pre-demo-check.ps1
+```
+
+Runs five checks (Vercel app, Vercel proxy descriptor, Vultr `/health`,
+runner secret enforcement, **end-to-end LIVE Gemini run via the proxy**)
+and prints a coloured summary. Exit code `0` = `READY FOR DEMO`,
+exit code `1` = `NOT READY`. Direct-IP probes that fail with 403 /
+network errors are degraded to `WARN` / `SKIP` (FortiGuard / corporate
+firewalls block raw IP egress on many networks; the proxy path is the
+demo path and proves the rest by transitivity).
+
+The script never reads or transmits any secret — the
+`x-runner-secret` is injected server-side by the Vercel proxy.
+
+### Manual checks (any platform with curl + jq)
+
+If you prefer to run the checks one by one:
 
 ```bash
 # 1. Vercel control tower page — should return 200
