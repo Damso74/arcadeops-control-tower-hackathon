@@ -231,11 +231,39 @@ export function ControlTowerExperience({
           <PastedTraceInput
             value={pastedTrace}
             onChange={setPastedTrace}
-            onLoadExample={() => {
-              const unsafe = findScenarioById(DEFAULT_SCENARIO_ID);
-              if (unsafe) setPastedTrace(unsafe.traceText);
+            // Lot 2c — three sample loaders wired on the canonical
+            // scenario ids. Loading any sample wipes the previous
+            // verdicts so the next click re-judges against the new
+            // pasted text (same logic as `handleSelect`).
+            onLoadUnsafe={() => {
+              const unsafe = findScenarioById("blocked_crm_write_agent");
+              if (unsafe) {
+                setPastedTrace(unsafe.traceText);
+                setJudgeBefore(null);
+                setJudgeAfter(null);
+              }
             }}
-            onClear={() => setPastedTrace("")}
+            onLoadSafe={() => {
+              const safe = findScenarioById("ready_research_agent");
+              if (safe) {
+                setPastedTrace(safe.traceText);
+                setJudgeBefore(null);
+                setJudgeAfter(null);
+              }
+            }}
+            onLoadMultiAgent={() => {
+              const multi = findScenarioById("multi_agent_escalation");
+              if (multi) {
+                setPastedTrace(multi.traceText);
+                setJudgeBefore(null);
+                setJudgeAfter(null);
+              }
+            }}
+            onClear={() => {
+              setPastedTrace("");
+              setJudgeBefore(null);
+              setJudgeAfter(null);
+            }}
             maxChars={MAX_TRACE_CHARS}
           />
         </section>

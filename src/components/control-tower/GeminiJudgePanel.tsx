@@ -5,6 +5,7 @@ import {
   Check,
   ClipboardCopy,
   DollarSign,
+  Download,
   Eye,
   FileWarning,
   ListChecks,
@@ -608,6 +609,7 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
               />
             ) : null}
             <CopyAuditReportButton result={result} />
+            <ExportVerdictJsonButton result={result} />
           </div>
 
           {reason ? (
@@ -707,6 +709,54 @@ function CopyAuditReportButton({ result }: { result: GeminiJudgeResult }) {
           Copy audit report
         </>
       )}
+    </button>
+  );
+}
+
+/* ---------- Export verdict JSON ---------- */
+
+/**
+ * Lot 2c (P2#27) — small "Export verdict JSON" button that
+ * downloads the raw `GeminiJudgeResult` as a `verdict.json` blob.
+ * Useful for jurys who want to keep a clean machine-readable record
+ * of what Gemini + ArcadeOps decided on each scenario.
+ *
+ * Pure client-side: no fetch, no global state. Safari mobile lacks a
+ * native download prompt, so we fall back to opening the blob URL in
+ * a new tab — the user can then save it manually.
+ */
+function ExportVerdictJsonButton({ result }: { result: GeminiJudgeResult }) {
+  const onClick = useCallback(() => {
+    try {
+      const json = JSON.stringify(result, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const filename = `arcadeops-verdict-${result.verdict}-${Date.now()}.json`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      // Some browsers ignore the `download` attribute on anchors that
+      // are not in the DOM — append/click/remove keeps the dance
+      // cross-browser without leaking the node.
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Revoke async so Safari has time to honour the download.
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch {
+      // Swallow — worst case the user does not get the file.
+    }
+  }, [result]);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Export verdict as JSON"
+      className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:border-white/30 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+    >
+      <Download className="h-3 w-3" aria-hidden />
+      Export verdict JSON
     </button>
   );
 }

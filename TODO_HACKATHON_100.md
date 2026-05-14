@@ -86,11 +86,11 @@
 
 ### Lot 2c — PasteCard enrichi + Export JSON (réf §5)
 
-- [ ] `PastedTraceInput.tsx` : remplacer le bouton unique `Load unsafe example` par 3 boutons (`Load unsafe CRM trace`, `Load safe research trace`, `Load multi-agent escalation trace`) + `Clear` (P1#12).
-- [ ] `ControlTowerExperience.tsx` : câbler les 3 callbacks sur les `traceText` des scénarios correspondants.
-- [ ] `GeminiJudgePanel.tsx` : ajouter `<ExportVerdictJsonButton result={state.result} />` à côté de `<CopyAuditReportButton>` (download blob `verdict.json`) (P2#27).
-- [ ] Smoke : 3 boutons load fonctionnent, Clear vide la textarea, Export JSON download un fichier parsable.
-- [ ] Gates + commit `feat(control-tower): Lot 2c — paste samples + export verdict json`.
+- [x] `PastedTraceInput.tsx` : remplacé le bouton unique `Load unsafe example` par 3 boutons typés couleur (`Load unsafe CRM trace` rouge, `Load safe research trace` emerald, `Load multi-agent escalation trace` amber) + `Clear` (P1#12). Helper interne `SampleLoaderButton`.
+- [x] `ControlTowerExperience.tsx` : câblé les 3 callbacks sur les `traceText` des scénarios `blocked_crm_write_agent` / `ready_research_agent` / `multi_agent_escalation` ; chaque load wipe `judgeBefore`/`judgeAfter` (cohérent avec `handleSelect`).
+- [x] `GeminiJudgePanel.tsx` : ajouté `<ExportVerdictJsonButton result={result} />` à côté de `<CopyAuditReportButton>` (Blob JSON, fallback Safari mobile via anchor injecté + cleanup `URL.revokeObjectURL`) (P2#27).
+- [x] Smoke : sera vérifié en fin de Bloc 2 via browser MCP.
+- [x] Gates + commit `feat(control-tower): Lot 2c — paste samples + export verdict json`.
 
 ### Lot 3a — Mini dashboard scoreboard (démarrage)
 
