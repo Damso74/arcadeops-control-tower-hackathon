@@ -1,9 +1,10 @@
-import { ArrowRight, Gauge, ShieldAlert, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 
 import { ArcadeOpsRuntimeSection } from "@/components/control-tower/ArcadeOpsRuntimeSection";
 import { CockpitStepper } from "@/components/control-tower/CockpitStepper";
 import { ControlTowerExperience } from "@/components/control-tower/ControlTowerExperience";
+import { RecommendedDemoBanner } from "@/components/control-tower/RecommendedDemoBanner";
 import type { ControlTowerModeAvailability } from "@/lib/control-tower/types";
 
 export const metadata: Metadata = {
@@ -43,33 +44,18 @@ export default function ControlTowerPage() {
   return (
     <div className="min-h-dvh bg-zinc-950 text-zinc-100">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 sm:px-10 sm:py-12">
-        {/* Hero — decision-first, single fold */}
-        <header className="flex flex-col gap-4">
+        {/* Hero — decision-first, single fold (Lot 1d compaction) */}
+        <header className="flex flex-col gap-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-emerald-300">
             ArcadeOps Control Tower
           </p>
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
             A Gemini-powered production gate for autonomous AI agents.
           </h1>
-          <p className="max-w-3xl text-base leading-relaxed text-zinc-300 sm:text-lg">
-            Replay or paste an ArcadeOps agent trace. Control Tower audits
-            tools, sub-agents, costs, approvals and risky outputs, then decides
-            whether the run should ship, need review, or be blocked.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="violet" icon={<Sparkles className="h-3 w-3" aria-hidden />}>
-              Powered by Gemini
-            </Badge>
-            <Badge tone="emerald" icon={<Gauge className="h-3 w-3" aria-hidden />}>
-              Deterministic replay
-            </Badge>
-            <Badge tone="red" icon={<ShieldAlert className="h-3 w-3" aria-hidden />}>
-              Production gate
-            </Badge>
-          </div>
-
-          {/* Compact one-line flow — used to be three big cards */}
+          {/* Compact one-line flow — replaces the deprecated 3-badge row.
+              The 3 capability badges (Powered by Gemini / Deterministic
+              replay / Production gate) live in `ArcadeOpsRuntimeSection`
+              MetaBadges so the hero stays under 3 lines on 1080p. */}
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
             <FlowStep n={1}>Pick a multi-agent run</FlowStep>
             <ArrowRight aria-hidden className="h-3 w-3 text-zinc-600" />
@@ -86,6 +72,8 @@ export default function ControlTowerPage() {
 
         <CockpitStepper />
 
+        <RecommendedDemoBanner />
+
         <ControlTowerExperience liveAvailable={availability.live} />
 
         <ArcadeOpsRuntimeSection />
@@ -100,30 +88,6 @@ export default function ControlTowerPage() {
         </footer>
       </div>
     </div>
-  );
-}
-
-function Badge({
-  tone,
-  icon,
-  children,
-}: {
-  tone: "violet" | "emerald" | "red";
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const palette = {
-    violet: "bg-violet-500/15 text-violet-200",
-    emerald: "bg-emerald-400/15 text-emerald-200",
-    red: "bg-red-400/15 text-red-200",
-  }[tone];
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${palette}`}
-    >
-      {icon}
-      {children}
-    </span>
   );
 }
 

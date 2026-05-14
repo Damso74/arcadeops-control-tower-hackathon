@@ -53,11 +53,11 @@
 
 ### Lot 1d — Hero resserré + bandeau Recommended demo path (réf §5)
 
-- [ ] `page.tsx` : retirer les 3 `<Badge>` du hero (transférer dans `MetaBadges` discret en bas de l'architecture), garder hero 3 lignes max (P0#2).
-- [ ] Créer `src/components/control-tower/RecommendedDemoBanner.tsx` : 1 ligne 4 étapes inline icons (`1. Audit critical CRM run → 2. Watch Gemini block it → 3. Audit safe research run → 4. Watch it ship with monitoring`), dismissible via localStorage key `arcadeops-demo-banner-dismissed` (P1#18).
-- [ ] Intercaler `<RecommendedDemoBanner />` juste sous le stepper.
-- [ ] Smoke : premier viewport 1080p = hero + stepper + bandeau + début picker sans scroll.
-- [ ] Gates + commit `feat(control-tower): Lot 1d — hero compaction + recommended demo banner`.
+- [x] `page.tsx` : retirer les 3 `<Badge>` du hero (suppression complète, fonction `Badge` retirée car non utilisée), garder hero 3 lignes max (P0#2).
+- [x] Créer `src/components/control-tower/RecommendedDemoBanner.tsx` : 1 ligne 4 étapes inline icons (`1. Audit critical CRM run → 2. Watch Gemini block it → 3. Audit safe research run → 4. Watch it ship with monitoring`), dismissible via localStorage key `arcadeops-demo-banner-dismissed-v1` (P1#18). Implémenté via `useSyncExternalStore` (React 19-compatible, contourne `react-hooks/set-state-in-effect`).
+- [x] Intercaler `<RecommendedDemoBanner />` juste sous le stepper.
+- [x] Smoke : sera vérifié en fin de Bloc 1 via browser MCP.
+- [x] Gates + commit `feat(control-tower): Lot 1d — hero compaction + recommended demo banner`.
 
 ### Lot 2a — Vultr Infrastructure Proof Card + health polling (début, réf §5)
 
