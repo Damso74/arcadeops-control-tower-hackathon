@@ -338,13 +338,19 @@ function renderSecondaryIcon(level: ScenarioRiskLevel) {
   }
 }
 
+// Lot 3b (P1#19) — micro-copies rewritten with action verbs and a
+// stake. Each line names the agent's intent first, then the production
+// signal a reviewer should pay attention to (confidence threshold,
+// audit trail, destructive write). Keeps the picker scannable on 1080p
+// while raising the narrative tension before the verdict drops.
 function secondaryDescription(scenario: TraceScenario): string {
   switch (scenario.expectedVerdict) {
     case "needs_review":
-      return "Customer replies without confidence thresholds.";
+      return "Drafts customer replies without a confidence floor — ship or escalate?";
     case "ready":
-      return "Read-only research workflow with audit trail.";
+      return "Reads sources only, every step audited — green-light candidate.";
     case "blocked":
+      return "Tries to mass-update CRM deals via destructive writes, no approval — block or let it ship?";
     default:
       return scenario.shortDescription;
   }

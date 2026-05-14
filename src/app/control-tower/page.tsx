@@ -52,6 +52,17 @@ export default function ControlTowerPage() {
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
             A Gemini-powered production gate for autonomous AI agents.
           </h1>
+          {/* Lot 3b (P2#24) — secondary punchline rendered immediately
+              under the hero title. Frames the platform pitch in a way
+              the deck and video script also reuse, so the jury hears
+              the same line in three places. Italic + zinc-400 keeps it
+              quiet enough to coexist with the V2 main punchline applied
+              in Lot 4a (`Gemini judges. Vultr runs. ArcadeOps blocks
+              unsafe autonomous agents before production.`). */}
+          <p className="max-w-3xl text-sm italic text-zinc-400 sm:text-base">
+            Logs tell you what happened. ArcadeOps decides whether what happened
+            is safe enough to ship.
+          </p>
           {/* Compact one-line flow — replaces the deprecated 3-badge row.
               The 3 capability badges (Powered by Gemini / Deterministic
               replay / Production gate) live in `ArcadeOpsRuntimeSection`

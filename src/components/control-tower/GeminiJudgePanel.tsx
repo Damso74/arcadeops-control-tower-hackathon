@@ -25,6 +25,7 @@ import type {
   GeminiVerdict,
   JudgeRequestBody,
 } from "@/lib/control-tower/gemini-types";
+import { findScenarioById } from "@/lib/control-tower/scenarios";
 
 import { Disclosure } from "./Disclosure";
 import { InfrastructureProofCard } from "./InfrastructureProofCard";
@@ -299,10 +300,29 @@ export function GeminiJudgePanel({
         <JudgeResultView
           result={state.result}
           lastAuditLatencyMs={lastAuditLatencyMs}
+          // Lot 3b (P5#46) — surface the Expected vs Actual badge in
+          // the decision card whenever the audited input is one of our
+          // canonical scenarios. The lookup is cheap and falls back to
+          // `null` for paste / replay modes (badge is then hidden).
+          expectedVerdict={resolveExpectedVerdict(requestBody)}
         />
       ) : null}
     </section>
   );
+}
+
+/**
+ * Lot 3b — Map the in-flight judge request to the canonical scenario's
+ * expected verdict, when applicable. Returns `null` for non-scenario
+ * modes so the `<ExpectedVsActualBadge>` is suppressed (we cannot
+ * compare against an oracle for paste / replay traces).
+ */
+function resolveExpectedVerdict(
+  requestBody: JudgeRequestBody | null,
+): GeminiVerdict | null {
+  if (!requestBody || requestBody.mode !== "scenario_trace") return null;
+  const scenario = findScenarioById(requestBody.scenarioId);
+  return scenario?.expectedVerdict ?? null;
 }
 
 interface JudgeResultViewProps {
@@ -326,6 +346,13 @@ interface JudgeResultViewProps {
    * `false` to avoid duplicating the proof card twice on the page.
    */
   showInfrastructureProof?: boolean;
+  /**
+   * Lot 3b (P5#46) — Canonical scenario expected verdict. Rendered as
+   * an "Expected vs Gemini" badge in the decision card when set.
+   * `null` / `undefined` for non-scenario modes (paste / replay) — the
+   * badge is then suppressed.
+   */
+  expectedVerdict?: GeminiVerdict | null;
 }
 
 /**
@@ -345,6 +372,7 @@ export function JudgeResultView({
   collapseDetails = false,
   lastAuditLatencyMs,
   showInfrastructureProof = true,
+  expectedVerdict = null,
 }: JudgeResultViewProps) {
   const sortedRisks = [...result.risks].sort(
     (a, b) => severityOrder(b.severity) - severityOrder(a.severity),
@@ -552,7 +580,7 @@ export function JudgeResultView({
 
   return (
     <div className="flex flex-col gap-6">
-      <DecisionCard result={result} />
+      <DecisionCard result={result} expectedVerdict={expectedVerdict} />
 
       {showInfrastructureProof ? (
         <InfrastructureProofCard lastAuditLatencyMs={lastAuditLatencyMs} />
@@ -575,7 +603,13 @@ export function JudgeResultView({
 
 /* ---------- Decision card ---------- */
 
-function DecisionCard({ result }: { result: GeminiJudgeResult }) {
+function DecisionCard({
+  result,
+  expectedVerdict,
+}: {
+  result: GeminiJudgeResult;
+  expectedVerdict?: GeminiVerdict | null;
+}) {
   const meta = verdictPalette(result.verdict);
   const Icon = meta.Icon;
   const reason = firstSentence(result.summary);
@@ -606,6 +640,12 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
                 label={firstRule.label}
                 severity={firstRule.severity}
                 extraCount={Math.max(0, policyGate.rules.length - 1)}
+              />
+            ) : null}
+            {expectedVerdict ? (
+              <ExpectedVsActualBadge
+                expected={expectedVerdict}
+                actual={result.verdict}
               />
             ) : null}
             <CopyAuditReportButton result={result} />
@@ -642,6 +682,73 @@ function DecisionCard({ result }: { result: GeminiJudgeResult }) {
       </div>
     </article>
   );
+}
+
+/* ---------- Expected vs Actual badge ---------- */
+
+/**
+ * Lot 3b (P5#46) — Compact "Expected: X · Gemini: Y · Match: yes/no"
+ * pill rendered next to the verdict badge whenever the audited input
+ * is one of our canonical scenarios. Lets a jury verify at a glance
+ * that Gemini agrees (or disagrees) with the trace's documented
+ * expected verdict — an instant credibility signal even when the
+ * underlying audit text is dense.
+ *
+ * Color tone follows the Match outcome:
+ *   - emerald when the match holds (Gemini matched the expected call),
+ *   - rose when it doesn't (instructive surprise — usually still ok,
+ *     but worth pointing out so the jury knows we surface it honestly).
+ *
+ * Pure presentational — no state, no fetches.
+ */
+function ExpectedVsActualBadge({
+  expected,
+  actual,
+}: {
+  expected: GeminiVerdict;
+  actual: GeminiVerdict;
+}) {
+  const matched = expected === actual;
+  const expectedLabel = formatVerdictShort(expected);
+  const actualLabel = formatVerdictShort(actual);
+  const tone = matched
+    ? "border-emerald-400/40 bg-emerald-400/[0.08] text-emerald-100"
+    : "border-rose-400/40 bg-rose-400/[0.08] text-rose-100";
+  return (
+    <span
+      role="status"
+      aria-label={
+        matched
+          ? `Expected ${expectedLabel}, Gemini agreed with ${actualLabel}.`
+          : `Expected ${expectedLabel}, Gemini decided ${actualLabel} — mismatch.`
+      }
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tone}`}
+    >
+      <span className="text-zinc-400/90">Expected</span>
+      <span className="font-mono">{expectedLabel}</span>
+      <span aria-hidden className="text-zinc-500">
+        ·
+      </span>
+      <span className="text-zinc-400/90">Gemini</span>
+      <span className="font-mono">{actualLabel}</span>
+      <span aria-hidden className="text-zinc-500">
+        ·
+      </span>
+      <span className="text-zinc-400/90">Match</span>
+      <span className="font-mono">{matched ? "yes" : "no"}</span>
+    </span>
+  );
+}
+
+function formatVerdictShort(v: GeminiVerdict): string {
+  switch (v) {
+    case "blocked":
+      return "BLOCKED";
+    case "needs_review":
+      return "REVIEW";
+    case "ready":
+      return "READY";
+  }
 }
 
 /* ---------- Copy audit report ---------- */

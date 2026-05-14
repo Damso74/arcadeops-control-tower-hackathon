@@ -106,11 +106,11 @@
 
 ### Lot 3b — Micro-copies + Expected vs Actual + punchline secondaire
 
-- [ ] `TraceScenarioPicker.tsx::secondaryDescription` : réécrire les 3 descriptions avec verbes d'action + tension narrative (P1#19).
-- [ ] `GeminiJudgePanel.tsx` `<DecisionCard>` : ajouter `<ExpectedVsActualBadge expected={scenario.expectedVerdict} actual={result.verdict} />` rendu ssi `mode === "scenario_trace"` (P5#46).
-- [ ] `page.tsx` : ajouter sous le titre du hero une ligne italique `Logs tell you what happened. ArcadeOps decides whether what happened is safe enough to ship.` (P2#24).
-- [ ] Smoke 3 scenarios : ExpectedVsActual visible et Match: yes (sauf surprise Gemini).
-- [ ] Gates + commit `feat(control-tower): Lot 3b — micro-copy + expected vs actual + secondary punchline`.
+- [x] `TraceScenarioPicker.tsx::secondaryDescription` : 3 cas verbes d'action explicites — `needs_review` ("Drafts customer replies without a confidence floor — ship or escalate?"), `ready` ("Reads sources only, every step audited — green-light candidate."), `blocked` ("Tries to mass-update CRM deals via destructive writes, no approval — block or let it ship?") (P1#19).
+- [x] `GeminiJudgePanel.tsx` `<DecisionCard>` : `<ExpectedVsActualBadge>` (compact pill `Expected · Gemini · Match`, tone emerald=match / rose=mismatch, `aria-label` complet) rendu ssi `requestBody.mode === "scenario_trace"` via helper `resolveExpectedVerdict()` qui lookup `findScenarioById`. Prop optionnelle `expectedVerdict` propagée à `JudgeResultViewProps` → `DecisionCard` (les autres callsites — GuardrailsPanel After — n'ont pas à changer car prop optional `null` par défaut) (P5#46).
+- [x] `page.tsx` : ligne italique `text-sm sm:text-base text-zinc-400` sous le titre hero, `max-w-3xl` pour respecter la grille du flow compact (P2#24).
+- [x] Smoke : sera vérifié en fin de Bloc 3 via browser MCP.
+- [x] Gates + commit `feat(control-tower): Lot 3b — micro-copy + expected vs actual + secondary punchline`.
 
 ### Lot 4a — Migration punchline finale partout
 
