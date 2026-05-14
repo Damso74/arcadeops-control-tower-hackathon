@@ -18,14 +18,18 @@ export const metadata: Metadata = {
 // /api/capabilities so a key added post-deploy enables the judge without a
 // rebuild.
 //
-// Lot 5 FULL: the live backend is now the Vultr FastAPI runner, surfaced
-// to Vercel as `RUNNER_URL`. The optional `RUNNER_SECRET` is enforced
-// server-side through `runnerHeaders()` — it is never required for the
-// availability check itself (a missing secret degrades to "no auth header",
-// which the runner accepts when its kill-switch `RUNNER_REQUIRE_SECRET=0`).
+// Lot 1a (Décision §6-B) — the live ArcadeOps mode (Vultr FastAPI runner,
+// `⚡ Run live with ArcadeOps backend` button + deterministic SSE replay
+// link in the picker) is gated by an explicit env kill-switch
+// `NEXT_PUBLIC_LIVE_VULTR === "1"` instead of the implicit presence of
+// `RUNNER_URL`. AGENTS.md acts the rationale: 130s/run is too long for
+// jury demo, the official video films Replay only, the live mode stays
+// available for internal demos when explicitly enabled. `RUNNER_URL`
+// remains required server-side for `/api/arcadeops/run` to actually
+// reach the Vultr backend — the kill-switch only controls UI exposure.
 function detectModeAvailability(): ControlTowerModeAvailability {
-  const runnerUrl = process.env.RUNNER_URL?.trim();
-  return { replay: true, live: Boolean(runnerUrl) };
+  const liveEnabled = process.env.NEXT_PUBLIC_LIVE_VULTR === "1";
+  return { replay: true, live: liveEnabled };
 }
 
 export default function ControlTowerPage() {

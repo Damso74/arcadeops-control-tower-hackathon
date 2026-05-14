@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   GeminiJudgeResult,
@@ -61,6 +61,20 @@ export function ControlTowerExperience({
   const [replayMissionPrompt, setReplayMissionPrompt] = useState<string>("");
   const [judgeBefore, setJudgeBefore] = useState<GeminiJudgeResult | null>(null);
   const [judgeAfter, setJudgeAfter] = useState<GeminiJudgeResult | null>(null);
+
+  // Lot 1a (P0#5) — once the first verdict lands, scroll the judge
+  // section into view so the wow moment is never below the fold on
+  // 1080p screens. We intentionally fire on every transition to a
+  // non-null judgeBefore (re-runs included), since each one is a
+  // fresh "first verdict" against the currently audited trace.
+  const judgeSectionRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!judgeBefore) return;
+    judgeSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [judgeBefore]);
 
   const activeScenario = useMemo<TraceScenario | null>(
     () =>
@@ -188,6 +202,7 @@ export function ControlTowerExperience({
         scenarios={TRACE_SCENARIOS}
         selection={selection}
         onSelect={handleSelect}
+        showReplayLink={liveAvailable}
       />
 
       {/* Mode-specific input panel */}
@@ -243,7 +258,7 @@ export function ControlTowerExperience({
       ) : null}
 
       {/* Reliability judge */}
-      <section className="flex flex-col gap-3">
+      <section ref={judgeSectionRef} className="flex flex-col gap-3">
         <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
           3 · Gemini decides: ship, review or block
         </h2>

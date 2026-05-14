@@ -27,11 +27,10 @@
 
 ### Lot 1a — Réduction 6→4 modes + uniformisation CTA + verdict scrollIntoView (réf §5)
 
-- [ ] `TraceScenarioPicker.tsx::ctaLabel` : retourner `"Audit this run"` pour les 3 niveaux risk (P0#3).
-- [ ] `TraceScenarioPicker.tsx` : gater `ReplayLink` derrière `process.env.NEXT_PUBLIC_LIVE_VULTR === "1"` (default off ; lecture serveur dans `page.tsx::detectModeAvailability`).
-- [ ] `ControlTowerExperience.tsx` : ajouter `useRef<HTMLDivElement>` sur la section Gemini Judge + `useEffect` qui appelle `scrollIntoView({behavior:"smooth", block:"start"})` quand `judgeBefore` passe de null → non null (P0#5).
-- [ ] Smoke browser MCP : pick critical → Run → verdict visible sans scroll manuel ✓ ; pick safe ✓ ; pick pasted ✓.
-- [ ] Gates : `tsc`, `lint`, `build`, commit `feat(control-tower): Lot 1a — reduce picker affordances + uniform CTA + verdict scrollIntoView`.
+- [x] `TraceScenarioPicker.tsx::ctaLabel` : retourner `"Audit this run"` pour les 3 niveaux risk (P0#3).
+- [x] `TraceScenarioPicker.tsx` : gater `ReplayLink` derrière `process.env.NEXT_PUBLIC_LIVE_VULTR === "1"` (default off ; lecture serveur dans `page.tsx::detectModeAvailability`).
+- [x] `ControlTowerExperience.tsx` : ajouter `useRef<HTMLDivElement>` sur la section Gemini Judge + `useEffect` qui appelle `scrollIntoView({behavior:"smooth", block:"start"})` quand `judgeBefore` passe de null → non null (P0#5).
+- [x] Gates : `tsc`, `lint`, `build` ✓ — commit `feat(control-tower): Lot 1a — reduce picker affordances + uniform CTA + verdict scrollIntoView`.
 
 ### Lot 1b — Animation Gemini ticker + reformulation fallback (réf §5)
 

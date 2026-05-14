@@ -28,6 +28,12 @@ interface TraceScenarioPickerProps {
   onSelect: (selection: ScenarioPickerSelection) => void;
   /** Disabled while a Gemini judge call is in flight. */
   disabled?: boolean;
+  /**
+   * Whether the deterministic SSE replay link should be exposed.
+   * Gated server-side by `NEXT_PUBLIC_LIVE_VULTR === "1"` to keep the
+   * picker focused on the 3 scenarios + paste in production demos.
+   */
+  showReplayLink?: boolean;
 }
 
 /**
@@ -47,6 +53,7 @@ export function TraceScenarioPicker({
   selection,
   onSelect,
   disabled,
+  showReplayLink = false,
 }: TraceScenarioPickerProps) {
   const critical = scenarios.find((s) => s.riskLevel === "critical") ?? null;
   const others = scenarios.filter((s) => s.riskLevel !== "critical");
@@ -106,11 +113,13 @@ export function TraceScenarioPicker({
           />
         </div>
 
-        <ReplayLink
-          selected={selection.mode === "replay"}
-          disabled={disabled}
-          onSelect={() => onSelect({ mode: "replay", scenarioId: null })}
-        />
+        {showReplayLink ? (
+          <ReplayLink
+            selected={selection.mode === "replay"}
+            disabled={disabled}
+            onSelect={() => onSelect({ mode: "replay", scenarioId: null })}
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -227,7 +236,7 @@ function SecondaryScenarioCard({
         aria-hidden
         className={`mt-auto inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ${palette.cta}`}
       >
-        {ctaLabel(scenario.riskLevel)}
+        {SECONDARY_CTA_LABEL}
         <ArrowRight className="h-3 w-3" aria-hidden />
       </span>
     </button>
@@ -385,14 +394,7 @@ function riskPalette(level: ScenarioRiskLevel): {
   }
 }
 
-function ctaLabel(level: ScenarioRiskLevel): string {
-  switch (level) {
-    case "critical":
-      return "Audit unsafe run";
-    case "medium":
-      return "Review this run";
-    case "low":
-    default:
-      return "Audit this run";
-  }
-}
+// Lot 1a (P0#3) — uniform CTA across the 3 scenario tiers so the
+// picker reads as "audit any of these runs" instead of mixing
+// "Audit unsafe / Review this / Audit this".
+const SECONDARY_CTA_LABEL = "Audit this run";

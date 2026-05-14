@@ -70,3 +70,6 @@ runner/**/*.pyc
 # Local-only Lot 5 FULL secrets — never commit, regenerate per-deploy.
 .runner-secret.local
 .runner-url.local
+
+# Temporary commit message files (PowerShell HEREDOC workaround)
+.commit-msg.tmp
