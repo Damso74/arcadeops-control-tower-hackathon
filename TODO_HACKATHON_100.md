@@ -145,12 +145,12 @@
 
 ### Lot 4c — README "How it works" relu + long description lablab + smoke prod final
 
-- [ ] Relire `README.md` section par section, conformité backlog P4#44 (Problem / Demo / Architecture / How Gemini used / How Vultr used / Local setup / ENV / API contract / Future).
-- [ ] Mettre à jour la section live demo avec instructions du nouveau cockpit (stepper, animation, infrastructure card).
-- [ ] `docs/SUBMISSION_LABLAB.md` : relire, vérifier punchline V2, vérifier que la long description ouvre sur "production gate" et ferme sur la punchline.
-- [ ] Smoke browser MCP **complet** sur la prod Vercel : 3 scenarios + 1 paste + Run Gemini judge × 3 + Re-score guardrails × 1.
-- [ ] `pre-demo-check.ps1` doit PASS (exit code 0).
-- [ ] Capturer 3 screenshots prod (verdict BLOCKED critical / verdict SHIP safe / Before/After) pour la submission lablab.
+- [x] Relu `README.md` section par section : section "Live demo" réécrite pour la cockpit V2 (stepper, scenario picker, Run Gemini judge 4 s, Decision card avec Expected vs Gemini badge, Production policies card 5 rules, Infrastructure proof card, Cockpit scoreboard) ; ajout sous-section "Internal director's cut" pour le bouton vert live Vultr 130 s gated par `NEXT_PUBLIC_LIVE_VULTR=1` ; "Why we win" enrichi avec bullet "Decision-first cockpit (V2)" + correction "three policy gates" → "five policy gates" ; bloc Mermaid mis à jour avec 5 gates (`crm_writes_require_approval`, `external_email_requires_approval`, `prompt_injection_must_be_blocked`, `write_without_audit_blocked`, `require_replay_id`) ; preuve historique "3 policy gates triggered" recadrée en "3 of 5 armed in cockpit V2" ; punchline V1 dans "How to demo curl" remplacée par V2 (P4#44).
+- [x] Section live demo enrichie avec les nouveaux composants UX (CockpitStepper, RecommendedDemoBanner, CriticalScenarioCard, GeminiTicker, DecisionCard, ExpectedVsActualBadge, ProductionPoliciesCard, InfrastructureProofCard, CockpitScoreboard).
+- [x] `docs/SUBMISSION_LABLAB.md` relu : long description ouvre toujours sur "production gate" et ferme sur la V2 (déjà OK Lot 4a) ; "Three deterministic policy gates" → "Five deterministic policy gates" + ajout d'un nouveau bullet "Cockpit V2 decision-first UI" listant tous les composants V2 ; section "Live demo URL" réécrite pour la cockpit V2 + note explicite sur le masquage du bouton vert via `NEXT_PUBLIC_LIVE_VULTR=0` ; section "Demo video URL" enrichie avec liens cover.png + DECK_OUTLINE.md.
+- [x] Smoke browser MCP : navigate `/control-tower` prod → snapshot AOM PASS (3 scenarios + paste, scenario picker fonctionnel, headings 1·Pick / 2·Inspect / 3·Decide visibles). Note : la prod publique est encore sur `main` (commit `36c4f03`) — la branche `feat/hackathon-100-bloc1` (12 commits) sera mergée à la fin de ce lot pour déclencher l'auto-deploy Vercel.
+- [x] `pre-demo-check.ps1` PASS — 5/5 checks (Vercel app `/control-tower` 605 ms, proxy GET 668 ms, Vultr `/health` 420 ms, secret enforced HTTP 401, end-to-end live run 13.4s/6781 tokens/$0.000588/BLOCKED/gemini-2.5-flash/vultr) → **GLOBAL VERDICT: READY FOR DEMO**.
+- [ ] Capturer 3 screenshots prod (verdict BLOCKED critical / verdict SHIP safe / Before/After) pour la submission lablab — **manuel utilisateur** (à faire post-merge main quand la cockpit V2 est en prod publique).
 - [ ] Gates + commit `chore(control-tower): Lot 4c — README polish + submission copy + prod smoke`.
 - [ ] **Merger `feat/hackathon-100-bloc1` → `main`** + push → vérifier deploy Vercel prod auto.
 
