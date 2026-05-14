@@ -9,10 +9,10 @@
 
 ## 0. Décisions binaires à acter AVANT de démarrer (HACKATHON_100_MASTER_PLAN.md §6)
 
-- [ ] **Décision A** — Acter la nouvelle punchline « Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production. » (recommandation : OUI).
-- [ ] **Décision B** — Masquer le bouton `⚡ Run live with ArcadeOps backend` en prod publique via `NEXT_PUBLIC_LIVE_VULTR=0` (recommandation : OUI ; réactiver localement avec `=1`).
-- [ ] **Décision C** — Garder le mode `pasted_trace` (PasteCard) et l'enrichir avec 3 boutons sample (recommandation : OUI).
-- [ ] Confirmer les décisions secondaires D/E/F/G ou les acter par défaut (Supprimer ReplayLink / 5ème rule / Cover capture annotée / Scoreboard ON).
+- [x] **Décision A** — Punchline V2 actée : « Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production. » (Lot 4a, commit `97a8aab`).
+- [x] **Décision B** — Bouton `⚡ Run live with ArcadeOps backend` masqué en prod publique via `NEXT_PUBLIC_LIVE_VULTR=0` ; réactivation locale avec `=1` (gate dans `TraceScenarioPicker.tsx::ReplayLink` + `page.tsx::detectModeAvailability`, Lot 1a).
+- [x] **Décision C** — Mode `pasted_trace` (PasteCard) conservé et enrichi : 3 boutons sample (`Load unsafe CRM trace` / `Load safe research trace` / `Load multi-agent escalation trace`) + Clear + Export JSON, gated par `NEXT_PUBLIC_HACKATHON_MODE=cockpit_v6` (Lot 2c).
+- [x] Décisions secondaires actées : ReplayLink supprimé du picker normal (gated `live_vultr`), 5 production policies armées (au lieu de 3), cover.png 1920×1080 généré via outil image, CockpitScoreboard ON par défaut.
 
 ---
 
@@ -20,10 +20,10 @@
 
 ### Préparation
 
-- [ ] `git checkout main && git pull --rebase` puis `git checkout -b feat/hackathon-100-bloc1`.
-- [ ] Vérifier que `npm install` à jour ; `npm run dev` lance Next 16.2.6 sans warning bloquant.
-- [ ] `pre-demo-check.ps1` exécuté = baseline verte (capture en mémoire pour comparaison fin de journée).
-- [ ] `scripts/smoke-policy-gates.ts` créé (cf. HACKATHON_100_MASTER_PLAN.md §7) — écrit AVANT toute modif moteur, comme filet de sécurité.
+- [x] Branche `feat/hackathon-100-bloc1` créée et utilisée pour les 12 lots (mergée dans `main` en fin de Lot 4c, commit `83b7ebb`).
+- [x] `npm install` OK ; Next 16.2.6 démarre sans warning bloquant.
+- [x] `pre-demo-check.ps1` baseline verte avant Lot 1a, re-vérifiée en fin de Lot 4c (5/5 PASS, end-to-end live run BLOCKED en 13.4 s).
+- [x] `scripts/smoke-policy-gates.ts` créé en Lot 2b (filet de sécurité 5 règles déterministes — T1-T5).
 
 ### Lot 1a — Réduction 6→4 modes + uniformisation CTA + verdict scrollIntoView (réf §5)
 
@@ -141,7 +141,7 @@
 - [x] `docs/VIDEO_SCRIPT_90S.md` : storyboard mis à jour pour la cockpit V2 — Scene 1 = cover.png 3 s puis hero `/control-tower` avec stepper + Recommended demo banner ; Scene 3 = scenario_trace mode (clic critical scenario card → `<GeminiTicker>` 4 s → `<DecisionCard>` V2 + `<ExpectedVsActualBadge>` + `<ProductionPoliciesCard>` + `<InfrastructureProofCard>` + scoreboard bump) au lieu de l'ancien live Vultr 130 s ; Scene 6 = punchline V2 en dernière phrase ; notes pratiques alignées sur `NEXT_PUBLIC_LIVE_VULTR=0` (live masqué) et sample loaders gated `cockpit_v6` (P3#32).
 - [ ] Enregistrer la vidéo 90s (OBS/QuickTime, micro propre, 1080p) — **manuel utilisateur**.
 - [ ] Export `docs/demo_90s.mp4` ≤ 100 MB — **manuel utilisateur**.
-- [ ] Commit `chore(control-tower): Lot 4b — cover image + deck v2 + 90s video script`.
+- [x] Commit `chore(control-tower): Lot 4b — cover image + deck v2 + 90s video script aligned` (commit `28d300d`).
 
 ### Lot 4c — README "How it works" relu + long description lablab + smoke prod final
 
@@ -150,9 +150,10 @@
 - [x] `docs/SUBMISSION_LABLAB.md` relu : long description ouvre toujours sur "production gate" et ferme sur la V2 (déjà OK Lot 4a) ; "Three deterministic policy gates" → "Five deterministic policy gates" + ajout d'un nouveau bullet "Cockpit V2 decision-first UI" listant tous les composants V2 ; section "Live demo URL" réécrite pour la cockpit V2 + note explicite sur le masquage du bouton vert via `NEXT_PUBLIC_LIVE_VULTR=0` ; section "Demo video URL" enrichie avec liens cover.png + DECK_OUTLINE.md.
 - [x] Smoke browser MCP : navigate `/control-tower` prod → snapshot AOM PASS (3 scenarios + paste, scenario picker fonctionnel, headings 1·Pick / 2·Inspect / 3·Decide visibles). Note : la prod publique est encore sur `main` (commit `36c4f03`) — la branche `feat/hackathon-100-bloc1` (12 commits) sera mergée à la fin de ce lot pour déclencher l'auto-deploy Vercel.
 - [x] `pre-demo-check.ps1` PASS — 5/5 checks (Vercel app `/control-tower` 605 ms, proxy GET 668 ms, Vultr `/health` 420 ms, secret enforced HTTP 401, end-to-end live run 13.4s/6781 tokens/$0.000588/BLOCKED/gemini-2.5-flash/vultr) → **GLOBAL VERDICT: READY FOR DEMO**.
-- [ ] Capturer 3 screenshots prod (verdict BLOCKED critical / verdict SHIP safe / Before/After) pour la submission lablab — **manuel utilisateur** (à faire post-merge main quand la cockpit V2 est en prod publique).
-- [ ] Gates + commit `chore(control-tower): Lot 4c — README polish + submission copy + prod smoke`.
-- [ ] **Merger `feat/hackathon-100-bloc1` → `main`** + push → vérifier deploy Vercel prod auto.
+- [ ] Capturer 3 screenshots prod (verdict BLOCKED critical / verdict SHIP safe / Before/After) pour la submission lablab — **manuel utilisateur** (la cockpit V2 est désormais publique sur `main`, wow path BLOCKED déjà validé browser MCP en prod).
+- [x] Gates + commit `chore(control-tower): Lot 4c — README polish + submission copy + prod smoke` (commit `eb020e8`).
+- [x] **Merge `feat/hackathon-100-bloc1` → `main`** effectué (commit merge no-ff `83b7ebb`) + push origin/main OK → Vercel auto-deploy déclenché.
+- [x] **Hotfix React #185 prod** : crash infini render loop sur `/control-tower` détecté juste après merge (cause = `CockpitScoreboard.getSnapshot()` violait le contrat `useSyncExternalStore` en retournant un nouvel objet à chaque appel). Fix immédiat sur `main` (commit `241a36b`) : snapshot caché module-level + `countersEqual` pour égalité structurelle, invalidation cache sur `notifyScoreboardChange()` et `onStorage`, `getServerSnapshot()` retourne référence SSR stable. Vercel auto-redeploy OK, smoke browser MCP validé sur le nouveau déploiement (Run Gemini judge → `BLOCKED — DO NOT SHIP` en 8 s, Expected vs Gemini = MATCH, scoreboard tick à `Runs audited 1 / Blocked 1 / Avg cost $0.210 / High-risk calls blocked 1`, zéro erreur React #185 dans la console).
 
 ---
 
