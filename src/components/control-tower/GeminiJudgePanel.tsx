@@ -60,6 +60,10 @@ type JudgeState =
   | { status: "ready"; result: GeminiJudgeResult }
   | { status: "error"; message: string };
 
+// Lot 1b (P0#6) — soft minimum window for the ticker animation so the
+// jury sees the 5-step narration even when Gemini is fast (sub-2s).
+const TICKER_MIN_DURATION_MS = 2000;
+
 export function GeminiJudgePanel({
   requestBody,
   onResult,
@@ -71,6 +75,7 @@ export function GeminiJudgePanel({
   const [model, setModel] = useState<string | null>(null);
   const [state, setState] = useState<JudgeState>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
+  const minDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Discover availability at mount. Failures default to "not available" so
   // we never render a half-broken panel when /api/capabilities is down.
@@ -103,15 +108,45 @@ export function GeminiJudgePanel({
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      if (minDurationTimerRef.current) {
+        clearTimeout(minDurationTimerRef.current);
+        minDurationTimerRef.current = null;
+      }
     };
   }, []);
 
   const runJudge = useCallback(async () => {
     if (!requestBody) return;
     abortRef.current?.abort();
+    if (minDurationTimerRef.current) {
+      clearTimeout(minDurationTimerRef.current);
+      minDurationTimerRef.current = null;
+    }
     const controller = new AbortController();
     abortRef.current = controller;
+    const startedAt = Date.now();
     setState({ status: "loading" });
+
+    // Lot 1b — keep the loading state visible at least
+    // TICKER_MIN_DURATION_MS so the 5-step ticker is always perceivable
+    // by the jury, even when Gemini answers in <2s. We never *delay*
+    // the result past Gemini's actual latency once the floor is past.
+    const finalize = (next: JudgeState) => {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, TICKER_MIN_DURATION_MS - elapsed);
+      if (remaining === 0) {
+        setState(next);
+        if (next.status === "ready") onResult?.(next.result);
+        return;
+      }
+      minDurationTimerRef.current = setTimeout(() => {
+        minDurationTimerRef.current = null;
+        // Bail out if the request was cancelled while we were waiting.
+        if (controller.signal.aborted) return;
+        setState(next);
+        if (next.status === "ready") onResult?.(next.result);
+      }, remaining);
+    };
 
     try {
       const res = await fetch("/api/gemini/judge", {
@@ -131,14 +166,13 @@ export function GeminiJudgePanel({
           payload && payload.ok === false
             ? payload.message || friendlyCodeMessage(payload.code)
             : `Gemini API error (HTTP ${res.status}).`;
-        setState({ status: "error", message });
+        finalize({ status: "error", message });
         return;
       }
-      setState({ status: "ready", result: payload.result });
-      onResult?.(payload.result);
+      finalize({ status: "ready", result: payload.result });
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
-      setState({
+      finalize({
         status: "error",
         message: (err as Error).message || "Failed to call Gemini.",
       });
@@ -150,26 +184,24 @@ export function GeminiJudgePanel({
   if (available === null) return null;
 
   if (!available) {
+    // Lot 1b (P1#40) — single-sentence, action-oriented copy aligned on
+    // the wording the master plan demands. The verbose paragraph that
+    // used to live here drowned the call-to-action.
     return (
       <aside
         aria-label="Gemini reliability agent availability"
-        className="flex flex-col gap-2 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-xs text-zinc-500"
+        className="flex flex-col gap-2 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-xs text-zinc-400"
       >
         <div>
           <JudgeModeBadge live={false} />
         </div>
-        <div>
-          <span className="font-medium text-zinc-400">
-            Gemini Reliability Agent
-          </span>{" "}
-          is available when configured. The page works fully without it — set{" "}
+        <p className="leading-relaxed">
+          Demo running in deterministic replay mode. Set{" "}
           <code className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-zinc-300">
             GEMINI_API_KEY
           </code>{" "}
-          to enable a live production-readiness verdict on every run. Until
-          then, deterministic replay drives the timeline so the demo stays
-          reproducible.
-        </div>
+          to enable live Gemini audit.
+        </p>
       </aside>
     );
   }
@@ -237,6 +269,8 @@ export function GeminiJudgePanel({
             "Choose a run, replay the safe sample, or paste a trace — Gemini needs evidence before it can judge."}
         </p>
       ) : null}
+
+      {state.status === "loading" ? <GeminiTicker /> : null}
 
       {state.status === "error" ? (
         <p
@@ -881,6 +915,71 @@ function Spinner() {
       aria-hidden
       className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
     />
+  );
+}
+
+/**
+ * Lot 1b (P0#6) — narrative ticker shown while Gemini is auditing.
+ * Cycles through the 5 step messages every 600ms (full loop ~3s,
+ * matches the master plan's "2-4s animation" requirement). Each step
+ * is always rendered so the jury sees the whole pipeline; the active
+ * step is highlighted, prior steps are dimmed but checked, future
+ * steps are muted. The cycle wraps so the ticker keeps moving even
+ * when Gemini takes longer than 3s on cold latency.
+ */
+const TICKER_MESSAGES: readonly string[] = [
+  "Reading agent trace…",
+  "Checking tool calls…",
+  "Detecting external side effects…",
+  "Applying production policies…",
+  "Generating Gemini verdict…",
+];
+const TICKER_STEP_MS = 600;
+
+function GeminiTicker() {
+  const [activeIdx, setActiveIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveIdx((i) => (i + 1) % TICKER_MESSAGES.length);
+    }, TICKER_STEP_MS);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Gemini audit in progress"
+      className="flex flex-col gap-1.5 rounded-lg border border-violet-400/20 bg-violet-500/[0.06] px-4 py-3"
+    >
+      {TICKER_MESSAGES.map((msg, i) => {
+        const isActive = i === activeIdx;
+        const isPast = i < activeIdx;
+        return (
+          <div
+            key={msg}
+            className={[
+              "flex items-center gap-2 text-xs transition-colors",
+              isActive
+                ? "text-violet-100"
+                : isPast
+                  ? "text-zinc-400"
+                  : "text-zinc-600",
+            ].join(" ")}
+          >
+            <span aria-hidden className="inline-flex h-3.5 w-3.5 flex-none items-center justify-center">
+              {isActive ? (
+                <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-violet-300" />
+              ) : isPast ? (
+                <Check className="h-3 w-3 text-emerald-300" aria-hidden />
+              ) : (
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/15" />
+              )}
+            </span>
+            <span className="font-mono text-[11px]">{msg}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

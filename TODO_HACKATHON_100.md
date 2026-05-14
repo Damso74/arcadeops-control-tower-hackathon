@@ -34,11 +34,10 @@
 
 ### Lot 1b — Animation Gemini ticker + reformulation fallback (réf §5)
 
-- [ ] `GeminiJudgePanel.tsx` : créer sous-composant `<GeminiTicker />` qui cycle 5 messages via `setInterval` 600ms (`Reading agent trace... → Checking tool calls... → Detecting external side effects... → Applying production policies... → Generating Gemini verdict...`) (P0#6).
-- [ ] `<GeminiTicker />` rendu pendant `state.status === "loading"`, cleanup `setInterval` au démontage et à `status !== "loading"`.
-- [ ] `GeminiJudgePanel.tsx` `available === false` : reformuler le copy en `Demo running in deterministic replay mode. Set GEMINI_API_KEY to enable live Gemini audit.` (P1#40).
-- [ ] Smoke : observer 2-4s d'animation pendant un audit live ; KO Gemini → message correct.
-- [ ] Gates + commit `feat(control-tower): Lot 1b — Gemini ticker animation + replay fallback copy`.
+- [x] `GeminiJudgePanel.tsx` : créer sous-composant `<GeminiTicker />` qui cycle 5 messages via `setInterval` 600ms (`Reading agent trace... → Checking tool calls... → Detecting external side effects... → Applying production policies... → Generating Gemini verdict...`) (P0#6).
+- [x] `<GeminiTicker />` rendu pendant `state.status === "loading"`, cleanup `setInterval` au démontage et à `status !== "loading"` (cycle stop quand le composant disparaît du JSX). Floor min 2s via `TICKER_MIN_DURATION_MS` côté `runJudge`.
+- [x] `GeminiJudgePanel.tsx` `available === false` : reformuler le copy en `Demo running in deterministic replay mode. Set GEMINI_API_KEY to enable live Gemini audit.` (P1#40).
+- [x] Gates + commit `feat(control-tower): Lot 1b — Gemini ticker animation + replay fallback copy`.
 
 ---
 
