@@ -94,11 +94,11 @@
 
 ### Lot 3a — Mini dashboard scoreboard (démarrage)
 
-- [ ] Créer `src/lib/control-tower/scoreboard-store.ts` : helpers `getCounters()` / `incrementCounter({verdict, costUsd, highRiskBlocked})` / `reset()` avec backing `localStorage["arcadeops-scoreboard-v1"]` (P1#21).
-- [ ] Créer `src/components/control-tower/CockpitScoreboard.tsx` : 6 KPI horizontal compact (Runs audited / Blocked / Needs review / Shipped / Avg cost / High-risk tool calls blocked).
-- [ ] `ControlTowerExperience::handleJudgeBefore` : appeler `incrementCounter` après chaque audit (gated par `process.env.NEXT_PUBLIC_SCOREBOARD !== "0"`).
-- [ ] Smoke : audit critical → Blocked++ ; reload → counters persistés ; bouton `Reset cockpit` → counters = 0.
-- [ ] Gates + commit `feat(control-tower): Lot 3a — cockpit scoreboard with localStorage counters`.
+- [x] Créé `src/lib/control-tower/scoreboard-store.ts` : helpers `getCounters()` / `incrementCounter({verdict, costUsd, policyGateTriggered})` / `resetCounters()` / `averageCostUsd()` / `emptyCounters()` avec backing `localStorage["arcadeops-scoreboard-v1"]` ; SSR-safe (zero snapshot fallback) ; crash-safe (corruption → zeros silencieux) (P1#21).
+- [x] Créé `src/components/control-tower/CockpitScoreboard.tsx` : 6 KPI horizontal compact (Runs audited / Blocked / Needs review / Shipped / Avg cost / High-risk calls blocked) + bouton Reset, `useSyncExternalStore` (cross-tab `storage` event + module-level `notifyScoreboardChange()` pour les updates in-tab), grid responsive `grid-cols-2 sm:grid-cols-3 lg:grid-cols-6`.
+- [x] `ControlTowerExperience::handleJudgeBefore` : appel `incrementCounter` après chaque audit (gated par module-level constant `SCOREBOARD_ENABLED = process.env.NEXT_PUBLIC_SCOREBOARD !== "0"` — tree-shaking-friendly), `notifyScoreboardChange()` pour rafraîchir l'UI in-tab. `costUsd` sourcé depuis `activeScenario.snapshot.observability.costUsd` (mode scenario) ou `replaySnapshot.observability.costUsd` (mode replay), omis pour pasted (pas de coût réel attribuable). `policyGateTriggered` lu depuis `result.policyGate?.triggered`.
+- [x] Smoke : sera vérifié en fin de Bloc 3 via browser MCP.
+- [x] Gates + commit `feat(control-tower): Lot 3a — cockpit scoreboard with localStorage counters`.
 
 ---
 

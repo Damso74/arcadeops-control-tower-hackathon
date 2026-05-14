@@ -13,7 +13,9 @@ import {
   TRACE_SCENARIOS,
   type TraceScenario,
 } from "@/lib/control-tower/scenarios";
+import { incrementCounter } from "@/lib/control-tower/scoreboard-store";
 
+import { CockpitScoreboard, notifyScoreboardChange } from "./CockpitScoreboard";
 import { DemoMissionLauncher } from "./DemoMissionLauncher";
 import { GeminiJudgePanel } from "./GeminiJudgePanel";
 import { GuardrailsPanel } from "./GuardrailsPanel";
@@ -26,6 +28,12 @@ import {
   TraceScenarioPicker,
   type ScenarioPickerSelection,
 } from "./TraceScenarioPicker";
+
+// Lot 3a — kill-switch decision §6-G in the master plan: scoreboard is
+// ON by default, can be hidden in any environment by setting
+// `NEXT_PUBLIC_SCOREBOARD=0` at build time. Inlined as a module-level
+// constant so the dead branch is fully tree-shaken in production.
+const SCOREBOARD_ENABLED = process.env.NEXT_PUBLIC_SCOREBOARD !== "0";
 
 const MAX_TRACE_CHARS = 12_000;
 
@@ -174,12 +182,36 @@ export function ControlTowerExperience({
     replaySnapshot,
   ]);
 
-  const handleJudgeBefore = useCallback((result: GeminiJudgeResult) => {
-    setJudgeBefore(result);
-    // Always wipe the after-result when the user re-runs the main judge —
-    // the re-score must match the latest verdict, not a stale one.
-    setJudgeAfter(null);
-  }, []);
+  const handleJudgeBefore = useCallback(
+    (result: GeminiJudgeResult) => {
+      setJudgeBefore(result);
+      // Always wipe the after-result when the user re-runs the main judge —
+      // the re-score must match the latest verdict, not a stale one.
+      setJudgeAfter(null);
+
+      // Lot 3a (P1#21) — feed the cockpit scoreboard. Cost is sourced
+      // from the audited snapshot when available (scenario / replay) and
+      // omitted for free-form pasted traces (no real cost to attribute).
+      // The scoreboard component subscribes via `notifyScoreboardChange`
+      // so the new counts repaint without requiring a parent re-render.
+      if (SCOREBOARD_ENABLED) {
+        let costUsd: number | undefined;
+        if (selection.mode === "scenario" && activeScenario) {
+          costUsd = activeScenario.snapshot.observability.costUsd;
+        } else if (selection.mode === "replay" && replaySnapshot) {
+          costUsd = replaySnapshot.observability.costUsd;
+        }
+        const policyGateTriggered = result.policyGate?.triggered === true;
+        incrementCounter({
+          verdict: result.verdict,
+          costUsd,
+          policyGateTriggered,
+        });
+        notifyScoreboardChange();
+      }
+    },
+    [selection.mode, activeScenario, replaySnapshot],
+  );
 
   const guardrailsForActiveSource = useMemo<readonly string[]>(() => {
     if (selection.mode === "scenario" && activeScenario) {
@@ -199,6 +231,15 @@ export function ControlTowerExperience({
 
   return (
     <div className="flex flex-col gap-8">
+      {/*
+       * Lot 3a (P1#21) — cockpit scoreboard pinned at the top of the
+       * experience, just under the sticky 3-step stepper rendered by
+       * `page.tsx`. Reads counters from localStorage so a power user
+       * can quickly compare runs across reloads. Hidden in any env via
+       * `NEXT_PUBLIC_SCOREBOARD=0` (decision §6-G).
+       */}
+      {SCOREBOARD_ENABLED ? <CockpitScoreboard /> : null}
+
       {/* Lot 1c — id="pick" anchors the cockpit stepper top-bar. */}
       <div id="pick" className="scroll-mt-24">
         <TraceScenarioPicker
