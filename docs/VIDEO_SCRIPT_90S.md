@@ -99,11 +99,12 @@
 
 | Field         | Value                                                                                                                                                                                                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **VO (EN)**   | "Try the live demo. Read the code. ArcadeOps Control Tower."                                                                                                                                                                                                     |
-| **VO (FR support)** | *« Essayez la démo live. Lisez le code. ArcadeOps Control Tower. »*                                                                                                                                                                                          |
+| **VO (EN)**   | "Try the live demo. Read the code. **Gemini plans the agent workflow. Vultr executes the runner. ArcadeOps blocks unsafe actions before production.**"                                                                                                          |
+| **VO (FR support)** | *« Essayez la démo live. Lisez le code. **Gemini planifie le workflow de l'agent. Vultr exécute le runner. ArcadeOps bloque les actions dangereuses avant la prod.** »*                                                                                       |
 | **On-screen** | Two URLs stacked center: `arcadeops-control-tower-hackathon.vercel.app` and `github.com/Damso74/arcadeops-control-tower-hackathon`. Logos: Gemini · Vultr · Vercel. Optional small webcam inset of presenter waving.                                              |
 | **Caption**   | "Built in 7 days for Milan AI Week 2026."                                                                                                                                                                                                                        |
 | **Transition** | Hard cut to black, end card.                                                                                                                                                                                                                                     |
+| **Punchline rule** | The bolded sentence ("Gemini plans the agent workflow. Vultr executes the runner. ArcadeOps blocks unsafe actions before production.") **must be the very last sentence spoken in the recording**. Silent post-roll only after that.                       |
 
 ---
 
@@ -111,7 +112,7 @@
 
 - Tagline one-liner: "Gemini runs the agent. Vultr executes the
   workflow. ArcadeOps decides if it can ship."
-- Author placeholder: `[Your name]`
+- Author: **ArcadeOps Team**
 - License: MIT
 - Submission: Lablab.ai · Milan AI Week 2026
 

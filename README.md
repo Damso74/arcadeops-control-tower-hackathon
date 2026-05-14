@@ -321,7 +321,7 @@ and [`docs/VULTR_DEPLOYMENT.md`](docs/VULTR_DEPLOYMENT.md).
 
 ## Team
 
-- **[Your name]** — design, frontend, runner, infra, pitch.
+- **ArcadeOps Team** — design, frontend, runner, infra, pitch.
 
 (Hackathon solo build. Author placeholder until the repo ships public.)
 

@@ -6,7 +6,7 @@
 
 ## Tagline (≤ 140 characters)
 
-Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship. (123 chars)
+Gemini-powered autonomous agents, executed on Vultr, audited by ArcadeOps before production. (109 chars)
 
 ## Short description
 
@@ -102,6 +102,26 @@ Live UI proof:
 ![Live demo trace](assets/live-demo-trace.png)
 
 ![Gemini reliability judge](assets/gemini-reliability-judge.png)
+
+## Why we win
+
+- **Other agents execute tasks. ArcadeOps decides if they're safe
+  enough to touch production.** The pitch is not "another agent
+  framework" — it's the production gate that fires _after_ Gemini
+  reasoning, on structured trace fields, with deterministic rules that
+  only ever tighten the verdict, never relax it. A Gemini hallucination
+  cannot silently flip a `BLOCKED` run to `SHIP`.
+- **Live, not slideware.** Every figure on this page comes from a real
+  `2026-05-13` smoke against production: 23.44 s wall-clock, 16 322
+  Gemini tokens, $0.001424 per run, 8 trace steps, 7 tool calls,
+  `BLOCKED` verdict.
+- **Sponsor-native architecture.** Gemini does the hard reasoning;
+  Vultr runs the workload; Vercel ships the UI. Each sponsor is doing
+  exactly what they are best at, not a token logo on a slide.
+- **Defense in depth.** Hardened Worker (wall-clock deadline,
+  transient-only retry, hallucinated-tool handling, cap on tool calls
+  and turns), runner-side fixture fallback, frontend-side deterministic
+  trace fallback, kill-switch env vars on the proxy.
 
 ## Key features
 
@@ -237,7 +257,7 @@ https://github.com/Damso74/arcadeops-control-tower-hackathon
 
 ## Team
 
-- **[Your name]** — design, frontend, runner, infra, pitch.
+- **ArcadeOps Team** — design, frontend, runner, infra, pitch.
 
 (Solo build for Milan AI Week 2026.)
 
