@@ -135,12 +135,12 @@
 
 ### Lot 4b — Cover image + slides + script vidéo aligné
 
-- [ ] Préparer `public/cover.png` (1280×720 OU 1920×1080), fond zinc-950, logo ArcadeOps + punchline V2 + logos sponsors (Google Gemini, Vultr, Lablab). Capture UI annotée préférée (rapide + véridique).
-- [ ] `docs/DECK_OUTLINE.md` : passer de 8 slides à 6 slides (Problem / Solution / Demo flow / Architecture / Why it matters / Impact) avec captures de la nouvelle UX (stepper, animation Gemini, Vultr Card, scoreboard) (P3#33).
-- [ ] Exporter le deck en PDF 6 pages (`docs/deck.pdf` ou via Figma/Slidev/Keynote selon outil).
-- [ ] `docs/VIDEO_SCRIPT_90S.md` : intégrer les nouveaux éléments UX dans le storyboard (scène 1 stepper, scène 3 animation Gemini, scène 3 fin scoreboard, scène 6 nouvelle punchline V2 comme dernière phrase) (P3#32).
-- [ ] Enregistrer la vidéo 90s (OBS/QuickTime, micro propre, 1080p).
-- [ ] Export `docs/demo_90s.mp4` ≤ 100 MB.
+- [x] Préparé `public/cover.png` (1920×1080, ~1.13 MB, fond zinc-950 dégradé emerald, logo ArcadeOps + V2 punchline + chips sponsors Google Gemini / Vultr / Vercel — généré via outil image dédié, P3#31).
+- [x] `docs/DECK_OUTLINE.md` : restructuré 8 → 6 slides (Problem / Solution / Demo flow / Architecture / Why it matters / Impact) + page de titre référençant `public/cover.png`, intégrant stepper / Recommended Demo Banner / scoreboard / ProductionPoliciesCard / ExpectedVsActualBadge + V2 punchline en Slide 1, 2, 3 et 6 (P3#33).
+- [ ] Exporter le deck en PDF 6 pages (`docs/deck.pdf` ou via Figma/Slidev/Keynote selon outil) — **manuel utilisateur**.
+- [x] `docs/VIDEO_SCRIPT_90S.md` : storyboard mis à jour pour la cockpit V2 — Scene 1 = cover.png 3 s puis hero `/control-tower` avec stepper + Recommended demo banner ; Scene 3 = scenario_trace mode (clic critical scenario card → `<GeminiTicker>` 4 s → `<DecisionCard>` V2 + `<ExpectedVsActualBadge>` + `<ProductionPoliciesCard>` + `<InfrastructureProofCard>` + scoreboard bump) au lieu de l'ancien live Vultr 130 s ; Scene 6 = punchline V2 en dernière phrase ; notes pratiques alignées sur `NEXT_PUBLIC_LIVE_VULTR=0` (live masqué) et sample loaders gated `cockpit_v6` (P3#32).
+- [ ] Enregistrer la vidéo 90s (OBS/QuickTime, micro propre, 1080p) — **manuel utilisateur**.
+- [ ] Export `docs/demo_90s.mp4` ≤ 100 MB — **manuel utilisateur**.
 - [ ] Commit `chore(control-tower): Lot 4b — cover image + deck v2 + 90s video script`.
 
 ### Lot 4c — README "How it works" relu + long description lablab + smoke prod final
