@@ -24,18 +24,27 @@ Built end-to-end in seven days for the **Milan AI Week 2026** hackathon
 ### 60-second jury tour (clickable, no setup)
 
 1. Open <https://arcadeops-control-tower-hackathon.vercel.app/control-tower>.
-2. Scroll to **Pick an agent run** and hit the small text link **"Or
-   replay the deterministic safe sample (no key required)"**.
-3. Click the green **⚡ Run live with ArcadeOps backend — Gemini + Vultr**
-   button. Watch phase pills, the execution timeline, tool calls
-   (`kb.search`, `budget.check`, `risk.scan`, `policy.check`,
-   `email.draft` …), the observability panel and the BLOCKED verdict
-   stream in live.
-4. Click **Run Gemini reliability judge**. A second Gemini call audits
-   the trace and produces a structured verdict (top risks, missing
-   evidence, remediation plan).
+2. Scroll to **panel 1 · Pick an agent run** and hit the small dotted
+   text link **"Or replay the deterministic safe sample (no key
+   required)"** at the bottom of the panel — this swaps panel 2 to the
+   live-mode launcher.
+3. Click the green **⚡ Run live with ArcadeOps backend** button (with
+   the violet **"Gemini + Vultr"** inline pill) that just appeared in
+   panel 2. Watch phase pills, the execution timeline, tool calls
+   (`kb.search`, `crm.lookup`, `policy.check`, `email.draft`,
+   `approval.request`, `audit.log` …), the observability panel and the
+   BLOCKED verdict stream in live.
+4. Click **Run Gemini reliability judge** in panel 3. A second Gemini
+   call audits the trace and produces a structured verdict (top risks,
+   missing evidence, remediation plan).
 5. Toggle guardrails in panel **4** and **Re-score with guardrails** to
    see the verdict flip from `Block` to `Ship`.
+
+> The green button is the **only** Vultr + Gemini live trigger. The
+> purple **"Run Gemini judge"** button further down (panel 3 in scenario
+> mode) only audits the bundled scenario trace fixture — it is not the
+> live path and will not produce the 23 s / 16 k tokens / $0.0014
+> numbers reported below.
 
 Everything runs against a real Vultr VM in Frankfurt (`fra`) protected
 by a `x-runner-secret` header (set as Vercel env vars). The
@@ -174,7 +183,12 @@ diagrams see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
-## How to demo in 60 seconds
+## How to demo in 60 seconds (curl-only fallback)
+
+> The clickable jury tour is **§ "Live demo · 60-second jury tour"**
+> above (with the prerequisite click on the *replay the deterministic
+> safe sample* link). The terminal-only path below is the back-up if
+> the UI misbehaves on demo day.
 
 1. Open https://arcadeops-control-tower-hackathon.vercel.app
 2. In a terminal, paste:

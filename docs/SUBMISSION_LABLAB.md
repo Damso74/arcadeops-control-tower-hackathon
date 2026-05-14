@@ -195,10 +195,13 @@ Live UI proof:
 **Primary (clickable, no setup)**:
 <https://arcadeops-control-tower-hackathon.vercel.app/control-tower>
 
-Open the page, click the green **⚡ Run live with ArcadeOps backend —
-Gemini + Vultr** button, watch the SSE timeline + tool calls + verdict
-stream in. Below are the two reference screenshots used in the pitch
-pack:
+Open the page, scroll to **panel 1 · Pick an agent run**, click the
+small dotted text link *"Or replay the deterministic safe sample (no
+key required)"* to expose the launcher in panel 2, then click the
+green **⚡ Run live with ArcadeOps backend** button (with the violet
+**"Gemini + Vultr"** inline pill). The SSE timeline + tool calls +
+BLOCKED verdict stream in live. Below are the two reference
+screenshots used in the pitch pack:
 
 ![Live demo trace](assets/live-demo-trace.png)
 

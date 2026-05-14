@@ -62,6 +62,21 @@ If `tokens` ≈ 0 or `mocked` is `true`, see §4 (Plan B).
 > contains a prompt-injection-baited tool result inside the runner's
 > CRM mock so the BLOCKED verdict is reproducible.
 
+> **UI cheat-sheet** (read this once before recording):
+>
+> - The page lands on **scenario mode** by default — the big red
+>   "Audit unsafe run" card is selected, and panel 2 shows the
+>   scenario evidence timeline.
+> - The **green ⚡ Run live with ArcadeOps backend (+ "Gemini + Vultr"
+>   pill)** button is the **only** button that triggers a real Vultr +
+>   Gemini run. It only renders **after** you click the small dotted
+>   "Or replay the deterministic safe sample" text link at the bottom
+>   of panel 1.
+> - The **purple "Run Gemini judge"** button in panel 3 is a different
+>   path — it asks Gemini to **audit** the bundled trace fixture and
+>   never POSTs to the Vultr runner. Use it only for the back-up Plan
+>   B (§4).
+
 > Two reference screenshots of the UI mid-run are committed at
 > [`docs/assets/live-demo-trace.png`](assets/live-demo-trace.png) and
 > [`docs/assets/gemini-reliability-judge.png`](assets/gemini-reliability-judge.png).
@@ -77,14 +92,30 @@ If `tokens` ≈ 0 or `mocked` is `true`, see §4 (Plan B).
 
 ### 0:10 → 0:25 — Launch the live run
 
-> **Click:** the green **⚡ Run live with ArcadeOps backend — Gemini +
-> Vultr** button inside panel **1 — Pick an agent run**.
+> **Reveal the launcher first.** The page lands on the default scenario
+> mode (the big red "Audit unsafe run" card under panel **1 — Pick an
+> agent run**). The live-Vultr launcher is one click away: scroll to
+> the bottom of panel 1 and click the small dotted-underlined text link
+> **"Or *replay the deterministic safe sample* (no key required)"**.
+> Panel 2 immediately swaps to the live-mode launcher.
+
+> **Then click:** the green **⚡ Run live with ArcadeOps backend** button
+> (with the violet **"Gemini + Vultr"** inline pill) that just appeared
+> inside panel **2 — Replay the safe sample**.
 
 > **Say:** *"This POSTs the mission to Vercel. Vercel injects an
 > `x-runner-secret` shared-secret header and forwards to a FastAPI
 > runner on Vultr Frankfurt. The runner runs a Planner and a Worker on
 > Gemini 2.5 Flash with native function calling, and streams every
 > phase change, step and tool call back as Server-Sent Events."*
+
+> **Tip for live recording.** On a 1080p laptop the green button sits
+> just below the fold once panel 2 expands — a single small scroll is
+> enough. If you ever lose it, hit `Ctrl+End` then scroll up; the only
+> green button on the page is the live-Vultr CTA. Do **not** confuse it
+> with the **purple** *"Run Gemini judge"* button that lives much
+> further down in panel **3 — Gemini decides** — that one only judges
+> the pre-canned scenario trace and never touches the Vultr runner.
 
 The trace lights up over ~23 seconds. Phase pills flip live; the
 `EventTimeline` populates step by step; `ToolCallCard`s fan out.
