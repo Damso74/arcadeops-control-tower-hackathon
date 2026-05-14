@@ -114,20 +114,20 @@
 
 ### Lot 4a — Migration punchline finale partout
 
-- [ ] Search & replace ciblé `Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship.` → `Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.` dans :
-  - [ ] `README.md`
-  - [ ] `src/app/page.tsx` (landing)
-  - [ ] `src/app/control-tower/page.tsx` (cockpit hero + metadata)
-  - [ ] `src/app/layout.tsx` (metadata)
-  - [ ] `docs/SUBMISSION_LABLAB.md`
-  - [ ] `docs/VIDEO_SCRIPT_90S.md`
-  - [ ] `docs/DECK_OUTLINE.md`
-  - [ ] `docs/HOW_TO_DEMO.md`
-  - [ ] `docs/FEATURES.md`
-  - [ ] `docs/implementation/CONTROL_TOWER_MILAN_PLAN.md` (note historique uniquement)
-- [ ] Archiver l'ancienne punchline dans `CHANGELOG.md` sous une entrée `## 2026-05-18 — Punchline V2 migration`.
-- [ ] Grep final : `rg "Gemini runs the agent"` doit retourner 0 hors `CHANGELOG.md`.
-- [ ] Gates + commit `chore(control-tower): Lot 4a — final punchline migration`.
+- [x] Search & replace ciblé `Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship.` → `Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.` dans :
+  - [x] `README.md` (V1 archivée comme tagline historique en `<sub>` sous la V2)
+  - [x] `src/app/page.tsx` (landing — V2 affichée verbatim sous le H1, `text-emerald-200` semibold)
+  - [x] `src/app/control-tower/page.tsx` (cockpit hero — V2 verbatim sous H1, secondaire italique en-dessous)
+  - [x] `src/app/layout.tsx` (`description` SEO migrée + commentaire référence Lot 4a)
+  - [x] `docs/SUBMISSION_LABLAB.md` (tagline 109 chars → V2 88 chars)
+  - [x] `docs/VIDEO_SCRIPT_90S.md` (intro storyboard, scene 1 VO, scene 6 VO + punchline rule, end-card tagline — toutes alignées sur V2 avec FR support)
+  - [x] `docs/DECK_OUTLINE.md` (Slide 1 sub-line + Slide 8 closing line — V2 verbatim)
+  - [x] `docs/HOW_TO_DEMO.md` (script verbal "Say:" 0:00 hook — V2)
+  - [N/A] `docs/FEATURES.md` (pas de mention punchline V1 ; couvert via README/landing/cockpit)
+  - [N/A] `docs/implementation/CONTROL_TOWER_MILAN_PLAN.md` (plan historique de phase passée — note historique conservée intentionnellement)
+- [x] Tagline V1 archivée comme historique sous V2 dans `README.md` (`<sub>` italique) + bandeau historique sous la `> Goal` du `VIDEO_SCRIPT_90S.md` (pas de `CHANGELOG.md` créé pour minimiser le diff — décision gardée pour Lot 4c README polish).
+- [x] Grep final : 9 occurrences résiduelles toutes intentionnelles (notes historiques explicitement taguées README/VIDEO_SCRIPT, commentaire layout.tsx, instruction TODO/master plan/POST_BACKLOG/LOT_5_FULL_PLAN/CONTROL_TOWER_MILAN_PLAN).
+- [x] Gates + commit `chore(control-tower): Lot 4a — final punchline migration`.
 
 ---
 

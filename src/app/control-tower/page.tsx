@@ -52,13 +52,18 @@ export default function ControlTowerPage() {
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
             A Gemini-powered production gate for autonomous AI agents.
           </h1>
-          {/* Lot 3b (P2#24) — secondary punchline rendered immediately
-              under the hero title. Frames the platform pitch in a way
-              the deck and video script also reuse, so the jury hears
-              the same line in three places. Italic + zinc-400 keeps it
-              quiet enough to coexist with the V2 main punchline applied
-              in Lot 4a (`Gemini judges. Vultr runs. ArcadeOps blocks
-              unsafe autonomous agents before production.`). */}
+          {/* Lot 4a (Décision §6-A) — V2 main punchline displayed
+              verbatim. Same sentence in `/`, `/control-tower`,
+              `README.md`, `docs/SUBMISSION_LABLAB.md`,
+              `docs/VIDEO_SCRIPT_90S.md`, `docs/DECK_OUTLINE.md`,
+              `docs/HOW_TO_DEMO.md`, and the SEO description. */}
+          <p className="max-w-3xl text-balance text-base font-semibold text-emerald-200 sm:text-lg">
+            Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents
+            before production.
+          </p>
+          {/* Lot 3b (P2#24) — secondary punchline kept as a quiet
+              italic frame under the V2 line. Italic + zinc-400 so it
+              doesn't compete with the main pitch — it reframes it. */}
           <p className="max-w-3xl text-sm italic text-zinc-400 sm:text-base">
             Logs tell you what happened. ArcadeOps decides whether what happened
             is safe enough to ship.

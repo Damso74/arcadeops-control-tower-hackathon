@@ -1,10 +1,14 @@
 # 90-second jury video — storyboard
 
-> **Goal:** in 90 seconds, prove that `Gemini runs the agent · Vultr
-> executes the workflow · ArcadeOps decides if it can ship` is real,
-> live and clickable. Bilingual notes — primary VO is **English**,
+> **Goal:** in 90 seconds, prove that **`Gemini judges · Vultr runs ·
+> ArcadeOps blocks unsafe autonomous agents before production`** is
+> real, live and clickable. Bilingual notes — primary VO is **English**,
 > French support text in italics underneath each scene for the recording
 > session.
+>
+> _<sub>Lot 4a — V2 pitch acted (decision §6-A). Older internal pitch
+> ("Gemini runs the agent · Vultr executes the workflow · ArcadeOps
+> decides if it can ship") kept as historical context only.</sub>_
 
 ## Recording setup
 
@@ -49,8 +53,8 @@
 
 | Field         | Value                                                                                                          |
 | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| **VO (EN)**   | "Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship."                        |
-| **VO (FR support)** | *« Gemini fait tourner l'agent. Vultr exécute le workflow. ArcadeOps décide s'il peut partir en prod. »* |
+| **VO (EN)**   | "Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production."                      |
+| **VO (FR support)** | *« Gemini juge. Vultr exécute. ArcadeOps bloque les agents IA dangereux avant la prod. »*                |
 | **On-screen** | Hero shot of `https://arcadeops-control-tower-hackathon.vercel.app` with the tagline overlay (`01_hero.png`).  |
 | **Lower third** | `arcadeops-control-tower-hackathon.vercel.app`                                                               |
 | **Transition** | Hard cut to scene 2 on the last word.                                                                         |
@@ -99,19 +103,19 @@
 
 | Field         | Value                                                                                                                                                                                                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **VO (EN)**   | "Try the live demo. Read the code. **Gemini plans the agent workflow. Vultr executes the runner. ArcadeOps blocks unsafe actions before production.**"                                                                                                          |
-| **VO (FR support)** | *« Essayez la démo live. Lisez le code. **Gemini planifie le workflow de l'agent. Vultr exécute le runner. ArcadeOps bloque les actions dangereuses avant la prod.** »*                                                                                       |
+| **VO (EN)**   | "Try the live demo. Read the code. **Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.**"                                                                                                                                  |
+| **VO (FR support)** | *« Essayez la démo live. Lisez le code. **Gemini juge. Vultr exécute. ArcadeOps bloque les agents IA dangereux avant la prod.** »*                                                                                                                          |
 | **On-screen** | Two URLs stacked center: `arcadeops-control-tower-hackathon.vercel.app` and `github.com/Damso74/arcadeops-control-tower-hackathon`. Logos: Gemini · Vultr · Vercel. Optional small webcam inset of presenter waving.                                              |
 | **Caption**   | "Built in 7 days for Milan AI Week 2026."                                                                                                                                                                                                                        |
 | **Transition** | Hard cut to black, end card.                                                                                                                                                                                                                                     |
-| **Punchline rule** | The bolded sentence ("Gemini plans the agent workflow. Vultr executes the runner. ArcadeOps blocks unsafe actions before production.") **must be the very last sentence spoken in the recording**. Silent post-roll only after that.                       |
+| **Punchline rule** | The bolded sentence ("Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.") **must be the very last sentence spoken in the recording**. Silent post-roll only after that.                                              |
 
 ---
 
 ## End-card (post-roll, optional 2 s)
 
-- Tagline one-liner: "Gemini runs the agent. Vultr executes the
-  workflow. ArcadeOps decides if it can ship."
+- Tagline one-liner: "Gemini judges. Vultr runs. ArcadeOps blocks
+  unsafe autonomous agents before production."
 - Author: **ArcadeOps Team**
 - License: MIT
 - Submission: Lablab.ai · Milan AI Week 2026

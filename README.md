@@ -1,6 +1,8 @@
 # ArcadeOps Control Tower
 
-> **Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship.**
+> **Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.**
+>
+> _<sub>Originally pitched as: "Gemini runs the agent. Vultr executes the workflow. ArcadeOps decides if it can ship." — same idea, sharper words.</sub>_
 
 [![Live on Vercel](https://img.shields.io/badge/live%20demo-vercel-black?logo=vercel)](https://arcadeops-control-tower-hackathon.vercel.app/control-tower)
 [![Runner on Vultr](https://img.shields.io/badge/runner-vultr%20fra%20%E2%80%A2%20auth-007BFC?logo=vultr&logoColor=white)](http://136.244.89.159/health)

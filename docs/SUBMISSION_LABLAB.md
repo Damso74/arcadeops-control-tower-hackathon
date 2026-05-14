@@ -6,7 +6,7 @@
 
 ## Tagline (≤ 140 characters)
 
-Gemini-powered autonomous agents, executed on Vultr, audited by ArcadeOps before production. (109 chars)
+Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production. (88 chars)
 
 ## Short description
 

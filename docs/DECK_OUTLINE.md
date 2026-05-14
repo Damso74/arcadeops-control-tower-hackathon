@@ -9,7 +9,9 @@
 
 - **ArcadeOps Control Tower**
 - Canonical question: _"Can this AI agent run safely ship to production?"_
-- Sub-line: _The production gate for autonomous AI agents._
+- Sub-line (V2 punchline, decision §6-A acted in Lot 4a): **_"Gemini
+  judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before
+  production."_**
 - Footer: AI Agent Olympics · Lablab.ai · Milan AI Week 2026
 - Visual: hero screenshot of `/control-tower` post-judge of the **Blocked
   CRM write agent** scenario, with the BLOCKED verdict pill visible.
@@ -95,8 +97,11 @@
   - **Block before deploy**: a model judges the run, not a vibe check.
   - **Guardrails as code**: simulate the fix before paying for it.
   - **Compliance-friendly**: every run has a JSON verdict + trail.
-- Closing line: _"ArcadeOps Control Tower — replay, paste, judge,
-  guard, ship."_
+- Closing line (V2 punchline, must mirror the cockpit hero, the README,
+  and the last sentence in the 90-second video): **_"Gemini judges.
+  Vultr runs. ArcadeOps blocks unsafe autonomous agents before
+  production."_**
+- Sub-closing: _"Replay, paste, judge, guard, ship."_
 - URLs: GitHub · Demo · Lablab project page.
 
 ---

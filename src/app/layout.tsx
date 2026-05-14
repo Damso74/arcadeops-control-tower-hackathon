@@ -12,9 +12,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Lot 4a — Decision §6-A acted: V2 punchline rolled out across the
+// hero, README, deck, video and SEO metadata. Gemini = judge,
+// Vultr = runtime, ArcadeOps = enforcement. The V1 ("Gemini runs the
+// agent. Vultr executes the workflow. ArcadeOps decides if it can
+// ship.") is preserved as historical context inside `README.md` and
+// the implementation plans, never shown to a jury again.
 export const metadata: Metadata = {
   title: "ArcadeOps Control Tower",
-  description: "Mission control for autonomous AI agents.",
+  description:
+    "Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents before production.",
 };
 
 export default function RootLayout({
