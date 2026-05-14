@@ -38,10 +38,39 @@ const STORAGE_KEY = "arcadeops-scoreboard-v1";
 
 const listeners = new Set<() => void>();
 
+// useSyncExternalStore requires getSnapshot() to return the SAME object
+// reference when nothing has changed; otherwise React loops infinitely
+// (minified React error #185 — "Maximum update depth exceeded").
+// `getCounters()` always allocates a fresh object (because it reads from
+// localStorage and parses JSON), so we cache the last result and return
+// it again whenever the structural values are equal.
+let cachedSnapshot: ScoreboardCounters | null = null;
+
+// Stable empty snapshot for SSR — must be the same object reference on
+// every server render to avoid hydration drift.
+const SSR_SNAPSHOT: ScoreboardCounters = emptyCounters();
+
+function countersEqual(a: ScoreboardCounters, b: ScoreboardCounters): boolean {
+  return (
+    a.runsAudited === b.runsAudited &&
+    a.blocked === b.blocked &&
+    a.needsReview === b.needsReview &&
+    a.shipped === b.shipped &&
+    a.totalCostUsd === b.totalCostUsd &&
+    a.costSamples === b.costSamples &&
+    a.policyGateTriggered === b.policyGateTriggered
+  );
+}
+
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   const onStorage = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY) listener();
+    if (event.key === STORAGE_KEY) {
+      // Invalidate the cache so the next getSnapshot() picks up the
+      // value written by the other tab.
+      cachedSnapshot = null;
+      listener();
+    }
   };
   if (typeof window !== "undefined") {
     window.addEventListener("storage", onStorage);
@@ -55,11 +84,16 @@ function subscribe(listener: () => void): () => void {
 }
 
 function getSnapshot(): ScoreboardCounters {
-  return getCounters();
+  const next = getCounters();
+  if (cachedSnapshot && countersEqual(cachedSnapshot, next)) {
+    return cachedSnapshot;
+  }
+  cachedSnapshot = next;
+  return next;
 }
 
 function getServerSnapshot(): ScoreboardCounters {
-  return emptyCounters();
+  return SSR_SNAPSHOT;
 }
 
 /**
@@ -68,8 +102,13 @@ function getServerSnapshot(): ScoreboardCounters {
  * tabs). Callers that mutate counters from outside this component
  * (typically `ControlTowerExperience::handleJudgeBefore`) should call
  * this after `incrementCounter()` so the UI repaints immediately.
+ *
+ * Also invalidates the snapshot cache so the next `getSnapshot()` call
+ * inside `useSyncExternalStore` re-reads from localStorage instead of
+ * returning the stale cached object reference.
  */
 export function notifyScoreboardChange(): void {
+  cachedSnapshot = null;
   for (const listener of listeners) listener();
 }
 
