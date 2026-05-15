@@ -89,13 +89,25 @@ export function CompactDashboardHeader() {
 
       <div className="flex flex-col gap-2">
         <h1 className="text-balance text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
-          Production Security Audit
+          AI Agent Production Gate
         </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-zinc-300 sm:text-base">
-          Audit autonomous agent runs before they reach production.
+        {/* Decision-first question lands the value in 3 seconds. */}
+        <p className="max-w-3xl text-balance text-lg font-semibold text-zinc-100 sm:text-xl">
+          Can this AI agent touch production?
         </p>
-        {/* V2 punchline — verbatim across `/`, README, video, deck. */}
-        <p className="max-w-3xl text-balance text-sm font-semibold text-emerald-200 sm:text-base">
+        <p className="max-w-3xl text-sm leading-relaxed text-zinc-300 sm:text-base">
+          Gemini audits the run. ArcadeOps blocks unsafe actions before they
+          reach real tools.
+        </p>
+        {/* Business framing reinforces what gets stopped, in plain English. */}
+        <p className="max-w-3xl text-sm leading-relaxed text-zinc-400">
+          Stop unsafe CRM writes, emails, and production tool calls before
+          customer impact.
+        </p>
+        {/* Punchline kept verbatim for video / deck / README continuity, but
+            demoted to a secondary line so the headline now leads with the
+            decision question. */}
+        <p className="max-w-3xl text-balance text-xs font-medium text-emerald-200/90 sm:text-sm">
           Gemini judges. Vultr runs. ArcadeOps blocks unsafe autonomous agents
           before production.
         </p>
