@@ -574,12 +574,15 @@ export function ControlTowerExperience({
     </div>
   );
 
+  // P0-MF-2 — only the 3 product-facing tabs (Summary / Evidence /
+  // Safety rules) appear in the cockpit tab bar. `infrastructure` and
+  // `trace` are kept out of `tabPanels` so `CockpitTabs` filters them
+  // out, then re-mounted inside the "Technical proof" disclosure
+  // below — preserving every existing test selector / data attribute.
   const tabPanels: Partial<Record<CockpitTabId, React.ReactNode>> = {
     summary: summaryPanel,
     evidence: evidencePanel,
     policies: policiesPanel,
-    infrastructure: infrastructurePanel,
-    trace: tracePanel,
   };
 
   // Pulse hint — flag the freshly-relevant tabs so the user discovers
@@ -625,6 +628,49 @@ export function ControlTowerExperience({
         panels={tabPanels}
         pulse={tabPulse}
       />
+
+      {/* P0-MF-2 — Infrastructure proof (Vultr / Frankfurt / latency)
+          and Run log (raw JSON inspector + export) are critical jury
+          proofs but NOT first-screen content. They live inside this
+          collapsed "Technical proof" disclosure so the cockpit reads
+          decision-first while keeping every existing component
+          mounted on demand. */}
+      <details className="group rounded-2xl border border-white/10 bg-white/[0.02] open:bg-white/[0.03]">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-5 py-4 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 sm:px-6">
+          <span className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+              Technical proof
+            </span>
+            <span className="text-zinc-100">
+              Show infrastructure proof and run log
+            </span>
+          </span>
+          <svg
+            aria-hidden
+            viewBox="0 0 20 20"
+            className="h-4 w-4 flex-none text-zinc-400 transition-transform group-open:rotate-180"
+          >
+            <path
+              fill="currentColor"
+              d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.24 4.38a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"
+            />
+          </svg>
+        </summary>
+        <div className="flex flex-col gap-5 border-t border-white/5 px-5 py-5 sm:px-6">
+          <section
+            aria-label="Infrastructure proof"
+            data-cockpit-panel-disclosure="infrastructure"
+          >
+            {infrastructurePanel}
+          </section>
+          <section
+            aria-label="Run log"
+            data-cockpit-panel-disclosure="trace"
+          >
+            {tracePanel}
+          </section>
+        </div>
+      </details>
     </div>
   );
 }
