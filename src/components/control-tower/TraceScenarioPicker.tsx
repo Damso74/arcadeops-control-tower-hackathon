@@ -66,11 +66,11 @@ export function TraceScenarioPicker({
     >
       <header className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold tracking-tight text-zinc-100 sm:text-xl">
-          Start here: choose an agent run
+          Start here: pick an agent run
         </h2>
         <p className="text-sm text-zinc-300">
-          Pick a risky or safe agent run, then launch the Gemini production
-          gate.
+          Pick a risky run to see what gets blocked, a safe run to see what
+          ships, or paste your own run log.
         </p>
       </header>
 
@@ -175,7 +175,7 @@ function CriticalScenarioCard({
             </span>
           ) : null}
           <span className="text-[10px] uppercase tracking-wider text-red-200/70">
-            Expected: blocked
+            Expected decision: Block
           </span>
         </div>
       </div>
@@ -273,14 +273,14 @@ function PasteCard({
       <div className="flex items-center gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
           <ClipboardPaste className="h-3 w-3" aria-hidden />
-          Bring your own
+          Paste a run log
         </span>
       </div>
       <h3 className="text-sm font-semibold text-zinc-50">
-        Paste your own trace
+        Paste your own run log
       </h3>
       <p className="text-xs leading-relaxed text-zinc-400">
-        Drop logs, JSON, MCP tool calls, or framework outputs.
+        Drop logs, JSON, or MCP tool calls — Gemini will audit them.
       </p>
       <span
         aria-hidden
@@ -404,8 +404,8 @@ function riskPalette(level: ScenarioRiskLevel): {
   }
 }
 
-// V2.2 §5 — uniform CTA across the 4 cards. "Select run" replaces
-// "Audit this run" because the actual audit only happens later, when
-// the user clicks "Run Gemini Production Gate" inside the Selected
-// Run Summary card.
+// V2.2 §5 — uniform CTA across the 4 cards. "Select run" intentionally
+// differs from the primary "Audit this run" CTA because the actual
+// audit only happens later, when the user clicks "Audit this run"
+// inside the Selected Run Summary card.
 const SECONDARY_CTA_LABEL = "Select run";

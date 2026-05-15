@@ -48,18 +48,20 @@ export default function ControlTowerPage() {
 
         <ControlTowerExperience liveAvailable={availability.live} />
 
-        {/* V2.2.1 — clarity patch: hide the runtime architecture section
-            behind a native disclosure so it never competes with the main
-            demo flow (Summary tab + Gate Closed/Open). Judges can still
-            reach it in one click, but the cockpit lands clean on first
-            paint. */}
+        {/* P0-9 — keep the runtime architecture behind a native
+            disclosure (collapsed by default) so technical proof never
+            competes with the verdict. Re-labelled "Technical proof" so
+            the section reads as supporting evidence, not as the main
+            attraction. */}
         <details className="group rounded-2xl border border-white/10 bg-white/[0.02] open:bg-white/[0.03]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-5 py-4 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 sm:px-6">
             <span className="flex flex-col gap-0.5">
               <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
-                Under the hood
+                Technical proof
               </span>
-              <span className="text-zinc-100">Show technical architecture</span>
+              <span className="text-zinc-100">
+                Show architecture, infrastructure and trace internals
+              </span>
             </span>
             <svg
               aria-hidden

@@ -271,9 +271,9 @@ export function GeminiJudgePanel({
               <Spinner /> Auditing run…
             </>
           ) : state.status === "ready" ? (
-            "Re-run production gate"
+            "Audit again"
           ) : (
-            actionLabel ?? "Run production gate"
+            actionLabel ?? "Audit this run"
           )}
         </button>
       </header>
@@ -391,7 +391,7 @@ export function JudgeResultView({
       {/* Production policy gate details — only when triggered. */}
       {result.policyGate?.triggered && result.policyGate.rules.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <SectionTitle>ArcadeOps production gates</SectionTitle>
+          <SectionTitle>ArcadeOps safety rules</SectionTitle>
           <Disclosure
             label={`${result.policyGate.rules.length} non-negotiable rule${
               result.policyGate.rules.length === 1 ? "" : "s"
@@ -675,7 +675,7 @@ function DecisionCard({
           {policyGate?.triggered && policyGate.rules.length > 0 ? (
             <p className="text-[11px] leading-relaxed text-zinc-500">
               Gemini provided the audit. ArcadeOps applied non-negotiable
-              production gates.
+              safety rules.
             </p>
           ) : null}
         </div>
@@ -719,8 +719,8 @@ function ExpectedVsActualBadge({
       role="status"
       aria-label={
         matched
-          ? `Expected ${expectedLabel}, Gemini agreed with ${actualLabel}.`
-          : `Expected ${expectedLabel}, Gemini decided ${actualLabel} — mismatch.`
+          ? `Expected ${expectedLabel}, Gemini decided ${actualLabel}, verdict confirmed.`
+          : `Expected ${expectedLabel}, Gemini decided ${actualLabel}, verdict mismatch.`
       }
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tone}`}
     >
@@ -734,8 +734,9 @@ function ExpectedVsActualBadge({
       <span aria-hidden className="text-zinc-500">
         ·
       </span>
-      <span className="text-zinc-400/90">Match</span>
-      <span className="font-mono">{matched ? "yes" : "no"}</span>
+      <span className="font-mono">
+        {matched ? "Verdict confirmed" : "Verdict mismatch"}
+      </span>
     </span>
   );
 }
@@ -883,7 +884,7 @@ export function formatAuditReport(result: GeminiJudgeResult): string {
   lines.push("ArcadeOps Control Tower Audit");
   lines.push("");
   lines.push(`Verdict: ${verdictLabel[result.verdict]}`);
-  lines.push(`Readiness: ${result.readinessScore}/100`);
+  lines.push(`Ship score: ${result.readinessScore}/100`);
   if (result.executiveDecision) {
     lines.push(`Next action: ${result.executiveDecision.trim()}`);
   }
@@ -974,7 +975,7 @@ function ScoreDial({
         style={{
           background: `conic-gradient(${palette.dial} ${angle}deg, rgba(255,255,255,0.08) ${angle}deg)`,
         }}
-        aria-label={`Readiness score ${score} out of 100`}
+        aria-label={`Ship score ${score} out of 100`}
         role="img"
       >
         <div className="grid h-[78%] w-[78%] place-items-center rounded-full bg-zinc-950">
@@ -989,7 +990,7 @@ function ScoreDial({
         </div>
       </div>
       <span className="text-[10px] uppercase tracking-wider text-zinc-500">
-        Readiness
+        Ship score
       </span>
     </div>
   );

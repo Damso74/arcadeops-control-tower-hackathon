@@ -23,20 +23,22 @@ interface BannerStep {
   target?: string;
 }
 
+// P0-3 — banner steps follow the same product wording the rest of the
+// page uses (Audit this run, BLOCKED, READY).
 const STEPS: ReadonlyArray<BannerStep> = [
   {
     index: 1,
-    label: "Select critical CRM run",
+    label: "Pick the critical CRM run",
     target: '[data-section="agent-test-gallery"]',
   },
-  { index: 2, label: "Run Gemini gate", target: "#summary-anchor" },
-  { index: 3, label: "Watch Gate Closed" },
+  { index: 2, label: "Audit this run", target: "#summary-anchor" },
+  { index: 3, label: "See BLOCKED verdict" },
   {
     index: 4,
-    label: "Select safe research run",
+    label: "Pick the safe research run",
     target: '[data-section="agent-test-gallery"]',
   },
-  { index: 5, label: "Watch Gate Open" },
+  { index: 5, label: "See READY verdict" },
 ];
 
 // Module-level subscriber set so the dismiss button can synchronously

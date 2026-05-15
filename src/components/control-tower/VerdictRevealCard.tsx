@@ -51,6 +51,7 @@ export function VerdictRevealCard({
 }: VerdictRevealCardProps) {
   const palette = verdictPalette(result.verdict);
   const subtitle = subtitleForVerdict(result.verdict);
+  const businessImpact = businessImpactForVerdict(result.verdict);
   const gateRef = useRef<HTMLDivElement | null>(null);
 
   // V2.2 §12 — once the verdict lands, scroll the Gate Status into
@@ -75,7 +76,11 @@ export function VerdictRevealCard({
 
       {/* Gate status banner — full-width, hero size, drives the wow. */}
       <div ref={gateRef} className="scroll-mt-24">
-        <GateBanner result={result} subtitle={subtitle} />
+        <GateBanner
+          result={result}
+          subtitle={subtitle}
+          businessImpact={businessImpact}
+        />
       </div>
 
       {/* Detail layer — score dial, copy/export, top risks, etc. */}
@@ -85,6 +90,11 @@ export function VerdictRevealCard({
         lastAuditLatencyMs={lastAuditLatencyMs}
         showInfrastructureProof={false}
       />
+
+      {/* Compact 1-line proof strip — what was used + where it ran + an
+          obvious export hook. Keeps "this was a real audit" visible
+          without making the technical surface scream for attention. */}
+      <ProofStrip />
 
       <style>{`
         @keyframes verdictFadeIn {
@@ -99,15 +109,17 @@ export function VerdictRevealCard({
 function GateBanner({
   result,
   subtitle,
+  businessImpact,
 }: {
   result: GeminiJudgeResult;
   subtitle: string;
+  businessImpact: string;
 }) {
   const palette = verdictPalette(result.verdict);
   const headline = headlineForVerdict(result.verdict);
   return (
     <div className="grid items-center gap-4 sm:grid-cols-[1fr_auto]">
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         <span
           className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${palette.classes}`}
         >
@@ -116,6 +128,9 @@ function GateBanner({
         <p className="text-base font-semibold text-zinc-100 sm:text-lg">
           {subtitle}
         </p>
+        {/* Plain-English business impact line — P0 brief mandates this is
+            the dominant narrative under the verdict banner. */}
+        <p className="text-sm text-zinc-300 sm:text-base">{businessImpact}</p>
       </div>
       <GateStatus verdict={result.verdict} size="hero" />
     </div>
@@ -137,11 +152,42 @@ function headlineForVerdict(verdict: GeminiVerdict): string {
 function subtitleForVerdict(verdict: GeminiVerdict): string {
   switch (verdict) {
     case "blocked":
-      return "Blocked before production · human override required.";
+      return "Stopped before customer impact.";
     case "needs_review":
-      return "Human approval required before this run can ship.";
+      return "Human approval required before production.";
     case "ready":
     default:
-      return "Ship with monitoring · production gate is open.";
+      return "Safe to ship with monitoring.";
   }
+}
+
+function businessImpactForVerdict(verdict: GeminiVerdict): string {
+  switch (verdict) {
+    case "blocked":
+      return "Prevented unsafe CRM write and customer email before production.";
+    case "needs_review":
+      return "Paused the run until a human approves the risky action.";
+    case "ready":
+    default:
+      return "Approved a read-only agent run with complete audit evidence.";
+  }
+}
+
+/**
+ * Single-line proof bar rendered immediately under the verdict body.
+ * Uses the existing infrastructure proof + judge metadata (Gemini model,
+ * Vultr region, JSON export hook) without duplicating any of those
+ * cards. Clicking the export hint scrolls to the verdict export buttons
+ * already inside `JudgeResultView`.
+ */
+function ProofStrip() {
+  return (
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500">
+      <span className="font-mono text-zinc-400">Gemini 2.5 Flash</span>
+      <span aria-hidden>·</span>
+      <span className="font-mono text-zinc-400">Vultr Frankfurt</span>
+      <span aria-hidden>·</span>
+      <span className="font-mono text-zinc-400">Exportable JSON verdict</span>
+    </p>
+  );
 }

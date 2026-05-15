@@ -62,8 +62,8 @@ function paletteFor(state: GateState): GatePalette {
   switch (state) {
     case "blocked":
       return {
-        label: "Gate Closed",
-        subtitle: "Blocked before production",
+        label: "BLOCKED",
+        subtitle: "Stopped before customer impact.",
         icon: Lock,
         border: "border-red-400/50",
         bg: "bg-red-400/[0.07]",
@@ -74,8 +74,8 @@ function paletteFor(state: GateState): GatePalette {
       };
     case "paused":
       return {
-        label: "Gate Paused",
-        subtitle: "Human review required",
+        label: "NEEDS REVIEW",
+        subtitle: "Human approval required before production.",
         icon: Pause,
         border: "border-amber-400/50",
         bg: "bg-amber-400/[0.07]",
@@ -86,8 +86,8 @@ function paletteFor(state: GateState): GatePalette {
       };
     case "open":
       return {
-        label: "Gate Open",
-        subtitle: "Ready with monitoring",
+        label: "READY",
+        subtitle: "Safe to ship with monitoring.",
         icon: CheckCircle2,
         border: "border-emerald-400/50",
         bg: "bg-emerald-400/[0.07]",
@@ -99,8 +99,8 @@ function paletteFor(state: GateState): GatePalette {
     case "awaiting":
     default:
       return {
-        label: "Awaiting Gemini verdict",
-        subtitle: "Production gate is armed",
+        label: "Ready to audit",
+        subtitle: "Pick a run, then audit it.",
         icon: ShieldOff,
         border: "border-zinc-500/30",
         bg: "bg-white/[0.02]",
@@ -175,7 +175,7 @@ export function GateStatus({
             palette.badgeText,
           ].join(" ")}
         >
-          Gate Status
+          Production decision
         </span>
         <span
           className={[

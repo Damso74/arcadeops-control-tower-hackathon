@@ -162,8 +162,8 @@ export function GuardrailsPanel({
     state.status === "loading"
       ? "Re-scoring…"
       : afterResult
-        ? "Re-score with new guardrails"
-        : "Re-score with guardrails";
+        ? "Apply guardrails and re-score"
+        : "Apply guardrails";
 
   return (
     <section
@@ -177,14 +177,14 @@ export function GuardrailsPanel({
             id={headingId}
             className="text-lg font-semibold text-zinc-50"
           >
-            Recommended production guardrails
+            Recommended safety rules
           </h3>
         </div>
         <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
-          Pick the guardrails to simulate. We re-run Gemini on the same trace
-          as if these guardrails were already implemented.{" "}
+          Pick the safety rules to apply. We re-audit the same run as if
+          these rules were already in place.{" "}
           <span className="text-zinc-300">
-            What-if simulation only. No backend is modified.
+            What-if simulation only — nothing in production changes.
           </span>
         </p>
       </header>
@@ -205,7 +205,7 @@ export function GuardrailsPanel({
       </ul>
 
       {advanced.length > 0 ? (
-        <Disclosure label="Advanced guardrails" hint={`${advanced.length} more`}>
+        <Disclosure label="Advanced safety rules" hint={`${advanced.length} more`}>
           <ul className="grid gap-2 sm:grid-cols-2">
             {advanced.map((label) => {
               const checked = selected.has(label);
@@ -238,7 +238,7 @@ export function GuardrailsPanel({
           {cta}
         </button>
         <span className="text-[11px] text-zinc-500">
-          {selected.size} guardrail{selected.size === 1 ? "" : "s"} selected
+          {selected.size} safety rule{selected.size === 1 ? "" : "s"} selected
         </span>
       </div>
 
@@ -255,7 +255,7 @@ export function GuardrailsPanel({
         <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
           <div className="flex items-center justify-between gap-3">
             <h4 className="text-sm font-semibold text-zinc-100">
-              After guardrails (what-if simulation)
+              After safety rules (what-if simulation)
             </h4>
             <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
               Simulation

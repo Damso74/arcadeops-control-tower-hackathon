@@ -1,10 +1,10 @@
 /**
- * "Under the hood: powered by ArcadeOps Runtime"
+ * "Architecture: powered by ArcadeOps Runtime"
  *
  * Hackathon storytelling block. The Control Tower demo only shows the
  * production gate; this section reminds the judge that the gate is the
  * tip of an actual autonomous-agent platform — agents, tools, sub-agent
- * delegation, trace persistence, cost / risk audit, policy gates.
+ * delegation, trace persistence, cost / risk audit, safety rules.
  *
  * Pure, server-friendly (no client hooks, no fetches). Static content
  * deliberately — there is no value in making this interactive for a
@@ -76,7 +76,7 @@ const ARCH_NODES: readonly { label: string; tone: ArchTone }[] = [
   { label: "Trace", tone: "neutral" },
   { label: "Gemini Reliability Agent", tone: "emerald" },
   { label: "Production decision", tone: "amber" },
-  { label: "Guardrails", tone: "emerald" },
+  { label: "Safety rules", tone: "emerald" },
 ];
 
 type ArchTone = "neutral" | "violet" | "emerald" | "amber";
@@ -84,12 +84,12 @@ type ArchTone = "neutral" | "violet" | "emerald" | "amber";
 export function ArcadeOpsRuntimeSection() {
   return (
     <section
-      aria-label="Under the hood: powered by ArcadeOps Runtime"
+      aria-label="Architecture: powered by ArcadeOps Runtime"
       className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/[0.04] via-white/[0.02] to-violet-500/[0.04] p-6 sm:p-8"
     >
       <header className="flex flex-col gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-300">
-          Under the hood
+          Architecture
         </p>
         <h2 className="text-balance text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
           Powered by ArcadeOps Runtime

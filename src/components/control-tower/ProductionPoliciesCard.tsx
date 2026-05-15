@@ -80,14 +80,14 @@ export function ProductionPoliciesCard({ result }: ProductionPoliciesCardProps) 
 
   return (
     <section
-      aria-label="Production policies enforced by ArcadeOps"
+      aria-label="Safety rules enforced by ArcadeOps"
       className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-5"
     >
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
             <ShieldCheck className="h-3 w-3" aria-hidden />
-            Production policies enforced
+            Safety rules enforced
           </span>
           <span className="text-[10px] text-zinc-500">
             5 non-negotiable rules · server-side
@@ -132,8 +132,8 @@ export function ProductionPoliciesCard({ result }: ProductionPoliciesCardProps) 
       </ul>
 
       <p className="text-[11px] leading-relaxed text-zinc-500">
-        Gemini reasons over the trace. ArcadeOps applies these
-        non-negotiable production gates on top of the model verdict.
+        Gemini reasons over the run. ArcadeOps applies these
+        non-negotiable safety rules on top of the model verdict.
       </p>
     </section>
   );

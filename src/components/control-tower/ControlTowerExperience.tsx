@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { buildFallbackVerdict } from "@/lib/control-tower/fallback-verdict";
 import type {
   GeminiJudgeResult,
   JudgeRequestBody,
@@ -16,6 +17,7 @@ import {
 import { incrementCounter } from "@/lib/control-tower/scoreboard-store";
 import { useGeminiJudge } from "@/lib/control-tower/use-gemini-judge";
 
+import { CockpitMiniStatus, type MiniStatusState } from "./CockpitMiniStatus";
 import { CockpitScoreboard, notifyScoreboardChange } from "./CockpitScoreboard";
 import {
   CockpitTabs,
@@ -88,6 +90,16 @@ export function ControlTowerExperience({
   const [activeTab, setActiveTab] = useState<CockpitTabId>("summary");
   const [hasUserSelectedRun, setHasUserSelectedRun] = useState<boolean>(false);
   const [helperVisible, setHelperVisible] = useState<boolean>(false);
+  // P0-MF-1 — when the live Gemini call fails (429 / 503 / timeout /
+  // network), we automatically pose a deterministic fallback verdict
+  // instead of leaving the user staring at an empty error banner.
+  // `fallbackInfo` is what the UI reads (banner + technical detail);
+  // `fallbackTriggeredSignatureRef` makes sure the auto-trigger only
+  // fires once per unique error cycle (anti-loop safety).
+  const [fallbackInfo, setFallbackInfo] = useState<{
+    upstreamMessage: string;
+  } | null>(null);
+  const fallbackTriggeredSignatureRef = useRef<string | null>(null);
 
   // V2.2 §6 — Selected Run Summary anchor used to scroll into view on
   // every Select run click. The summary card is the only landing
@@ -162,6 +174,10 @@ export function ControlTowerExperience({
     (result: GeminiJudgeResult) => {
       setJudgeBefore(result);
       setJudgeAfter(null);
+      // A live Gemini result invalidates any previous fallback banner —
+      // the auto-fallback path passes its own `fallbackInfo` _after_
+      // calling `handleJudgeResult`, so we can safely clear here.
+      setFallbackInfo(null);
 
       // V2.2 §3 — feed the cockpit scoreboard. Cost is sourced
       // from the audited snapshot when available (scenario / replay) and
@@ -204,6 +220,8 @@ export function ControlTowerExperience({
     setSelection(next);
     setJudgeBefore(null);
     setJudgeAfter(null);
+    setFallbackInfo(null);
+    fallbackTriggeredSignatureRef.current = null;
     setHasUserSelectedRun(true);
     setActiveTab("summary");
     setHelperVisible(true);
@@ -233,10 +251,45 @@ export function ControlTowerExperience({
       if (selection.mode === "replay") {
         setJudgeBefore(null);
         setJudgeAfter(null);
+        setFallbackInfo(null);
+        fallbackTriggeredSignatureRef.current = null;
       }
     },
     [selection.mode],
   );
+
+  // P0-MF-1 — auto-fallback effect. Watches the Gemini judge state
+  // and, on a true error (not a transient loading→error→loading flip),
+  // synthesises a deterministic verdict via `buildFallbackVerdict` and
+  // pushes it through the same `handleJudgeResult` path so the rest
+  // of the cockpit (scoreboard, sticky bar, verdict card, before/after)
+  // lights up exactly like a successful audit.
+  //
+  // Anti-loop guard: we tag each error cycle with a stable signature
+  // (judgeKey + error message) and refuse to fire again until either
+  // the signature changes (new run picked, new error message) or the
+  // user explicitly retries (which clears the ref via the Retry CTA).
+  useEffect(() => {
+    if (judge.state.status !== "error") return;
+    if (judgeBefore) return; // a verdict is already on screen — keep it.
+    const signature = `${judgeKey}::${judge.state.message}`;
+    if (fallbackTriggeredSignatureRef.current === signature) return;
+    fallbackTriggeredSignatureRef.current = signature;
+    const fallback = buildFallbackVerdict({
+      scenario: activeScenario,
+      mode: selection.mode,
+      upstreamMessage: judge.state.message,
+    });
+    handleJudgeResult(fallback);
+    setFallbackInfo({ upstreamMessage: judge.state.message });
+  }, [
+    judge.state,
+    judgeKey,
+    judgeBefore,
+    activeScenario,
+    selection.mode,
+    handleJudgeResult,
+  ]);
 
   const summaryMode = selection.mode;
   const summaryHint = ctaEmptyHintFor(selection.mode, judgeRequestBody);
@@ -280,8 +333,8 @@ export function ControlTowerExperience({
           role="status"
           className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] px-4 py-2 text-xs text-emerald-100"
         >
-          Run selected. Review the summary, then launch the Gemini production
-          gate.
+          Run selected. Review the summary, then click <strong>Audit this
+          run</strong>.
         </p>
       ) : null}
 
@@ -346,13 +399,46 @@ export function ControlTowerExperience({
           is in flight. Replaces the previous panel-internal ticker. */}
       {judge.busy ? <GeminiScanTicker /> : null}
 
-      {judge.state.status === "error" ? (
-        <p
+      {fallbackInfo ? (
+        // P0-MF-1 — never surface a raw API error in the main flow.
+        // The fallback verdict has already been auto-posed via the
+        // effect above, so this banner is purely informational. The
+        // raw upstream message stays inside the <details> below for
+        // debug-minded reviewers; the main copy is honest, short, and
+        // keeps the demo moving.
+        <div
           role="status"
-          className="rounded-lg border border-red-400/30 bg-red-400/[0.06] px-4 py-3 text-sm text-red-200"
+          className="flex flex-col gap-2 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3"
         >
-          {judge.state.message}
-        </p>
+          <p className="text-sm text-amber-100">
+            Gemini is temporarily busy. Deterministic replay verdict is
+            shown so the demo keeps moving.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                // Allow the auto-fallback to fire again on the next
+                // error cycle if the retry also fails.
+                fallbackTriggeredSignatureRef.current = null;
+                setFallbackInfo(null);
+                void judge.runJudge();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-amber-300/50 bg-amber-400/15 px-3 py-1.5 text-xs font-semibold text-amber-50 transition-colors hover:bg-amber-400/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
+            >
+              Retry live audit
+            </button>
+          </div>
+          <details className="text-[11px] text-amber-100/80">
+            <summary className="cursor-pointer select-none text-amber-200/90 hover:text-amber-100">
+              View replay details
+            </summary>
+            <p className="mt-1 font-mono text-amber-50/80">
+              Live Gemini call failed: {fallbackInfo.upstreamMessage}.
+              Replay fallback used.
+            </p>
+          </details>
+        </div>
       ) : null}
 
       {/* V2.2 §13 — cinematic verdict reveal, integrated into Summary so
@@ -488,12 +574,15 @@ export function ControlTowerExperience({
     </div>
   );
 
+  // P0-MF-2 — only the 3 product-facing tabs (Summary / Evidence /
+  // Safety rules) appear in the cockpit tab bar. `infrastructure` and
+  // `trace` are kept out of `tabPanels` so `CockpitTabs` filters them
+  // out, then re-mounted inside the "Technical proof" disclosure
+  // below — preserving every existing test selector / data attribute.
   const tabPanels: Partial<Record<CockpitTabId, React.ReactNode>> = {
     summary: summaryPanel,
     evidence: evidencePanel,
     policies: policiesPanel,
-    infrastructure: infrastructurePanel,
-    trace: tracePanel,
   };
 
   // Pulse hint — flag the freshly-relevant tabs so the user discovers
@@ -503,8 +592,22 @@ export function ControlTowerExperience({
     policies: judgeBefore?.policyGate?.triggered === true,
   };
 
+  // P0-6 — sticky 1-line status that always tells a reviewer where the
+  // production decision sits, even if the verdict card has scrolled out
+  // of view. Updates derive directly from the same Gemini judge state.
+  const miniStatus: MiniStatusState = judge.busy
+    ? { kind: "auditing" }
+    : judgeBefore
+      ? { kind: "verdict", verdict: judgeBefore.verdict }
+      : { kind: "idle" };
+
   return (
     <div className="flex flex-col gap-8">
+      {/* P0-6 — sticky mini-status. First thing visible inside the
+          cockpit so the reviewer can read the current decision in one
+          glance. */}
+      <CockpitMiniStatus state={miniStatus} />
+
       {/* V2.2 §3 — Cockpit scoreboard pinned right under the compact
           dashboard header. Hidden in any env via
           `NEXT_PUBLIC_SCOREBOARD=0` (decision §6-G). */}
@@ -525,6 +628,49 @@ export function ControlTowerExperience({
         panels={tabPanels}
         pulse={tabPulse}
       />
+
+      {/* P0-MF-2 — Infrastructure proof (Vultr / Frankfurt / latency)
+          and Run log (raw JSON inspector + export) are critical jury
+          proofs but NOT first-screen content. They live inside this
+          collapsed "Technical proof" disclosure so the cockpit reads
+          decision-first while keeping every existing component
+          mounted on demand. */}
+      <details className="group rounded-2xl border border-white/10 bg-white/[0.02] open:bg-white/[0.03]">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-5 py-4 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 sm:px-6">
+          <span className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+              Technical proof
+            </span>
+            <span className="text-zinc-100">
+              Show infrastructure proof and run log
+            </span>
+          </span>
+          <svg
+            aria-hidden
+            viewBox="0 0 20 20"
+            className="h-4 w-4 flex-none text-zinc-400 transition-transform group-open:rotate-180"
+          >
+            <path
+              fill="currentColor"
+              d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.24 4.38a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"
+            />
+          </svg>
+        </summary>
+        <div className="flex flex-col gap-5 border-t border-white/5 px-5 py-5 sm:px-6">
+          <section
+            aria-label="Infrastructure proof"
+            data-cockpit-panel-disclosure="infrastructure"
+          >
+            {infrastructurePanel}
+          </section>
+          <section
+            aria-label="Run log"
+            data-cockpit-panel-disclosure="trace"
+          >
+            {tracePanel}
+          </section>
+        </div>
+      </details>
     </div>
   );
 }
@@ -536,12 +682,12 @@ function ctaEmptyHintFor(
   if (body) return null;
   switch (mode) {
     case "scenario":
-      return "Pick a scenario above to enable the Gemini production gate.";
+      return "Pick a run above to audit it.";
     case "pasted":
-      return "Paste a trace (≥ 20 characters) to enable the Gemini production gate.";
+      return "Paste a run log (≥ 20 characters) to audit it.";
     case "replay":
     default:
-      return "Replay the safe sample first — Gemini needs the streamed snapshot before it can judge.";
+      return "Replay the safe sample first — Gemini needs the streamed run before it can audit.";
   }
 }
 
