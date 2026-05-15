@@ -70,14 +70,15 @@ export function SelectedRunSummaryCard({
   const verdictLabel = verdict?.verdict ?? null;
   const isAwaiting = verdictLabel === null;
 
-  // Decide CTA copy.
+  // Decide CTA copy. The page question is "Can this AI agent touch
+  // production?" so the CTA must be the answer-action: audit this run.
   let ctaLabel: string;
   if (busy) {
-    ctaLabel = "Running Gemini Production Gate…";
+    ctaLabel = "Auditing run…";
   } else if (verdictLabel) {
-    ctaLabel = "Re-run Gemini Production Gate";
+    ctaLabel = "Audit again";
   } else {
-    ctaLabel = "Run Gemini Production Gate";
+    ctaLabel = "Audit this run";
   }
 
   // Compose summary text per mode.
@@ -102,7 +103,7 @@ export function SelectedRunSummaryCard({
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
             <Sparkles className="h-3 w-3" aria-hidden />
-            Selected run summary
+            Run preview
           </span>
           {expectedBadge ? (
             <span
@@ -285,20 +286,20 @@ function expectedBadgeFor(
     case "blocked":
       return {
         Icon: ShieldAlert,
-        label: "Expected: BLOCKED",
+        label: "Expected decision: Block",
         classes: "bg-red-500/15 text-red-200",
       };
     case "needs_review":
       return {
         Icon: AlertTriangle,
-        label: "Expected: NEEDS REVIEW",
+        label: "Expected decision: Review",
         classes: "bg-amber-500/15 text-amber-200",
       };
     case "ready":
     default:
       return {
         Icon: ShieldCheck,
-        label: "Expected: SHIP",
+        label: "Expected decision: Ship",
         classes: "bg-emerald-500/15 text-emerald-200",
       };
   }
