@@ -16,6 +16,7 @@ import {
 import { incrementCounter } from "@/lib/control-tower/scoreboard-store";
 import { useGeminiJudge } from "@/lib/control-tower/use-gemini-judge";
 
+import { CockpitMiniStatus, type MiniStatusState } from "./CockpitMiniStatus";
 import { CockpitScoreboard, notifyScoreboardChange } from "./CockpitScoreboard";
 import {
   CockpitTabs,
@@ -280,8 +281,8 @@ export function ControlTowerExperience({
           role="status"
           className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] px-4 py-2 text-xs text-emerald-100"
         >
-          Run selected. Review the summary, then launch the Gemini production
-          gate.
+          Run selected. Review the summary, then click <strong>Audit this
+          run</strong>.
         </p>
       ) : null}
 
@@ -503,8 +504,22 @@ export function ControlTowerExperience({
     policies: judgeBefore?.policyGate?.triggered === true,
   };
 
+  // P0-6 — sticky 1-line status that always tells a reviewer where the
+  // production decision sits, even if the verdict card has scrolled out
+  // of view. Updates derive directly from the same Gemini judge state.
+  const miniStatus: MiniStatusState = judge.busy
+    ? { kind: "auditing" }
+    : judgeBefore
+      ? { kind: "verdict", verdict: judgeBefore.verdict }
+      : { kind: "idle" };
+
   return (
     <div className="flex flex-col gap-8">
+      {/* P0-6 — sticky mini-status. First thing visible inside the
+          cockpit so the reviewer can read the current decision in one
+          glance. */}
+      <CockpitMiniStatus state={miniStatus} />
+
       {/* V2.2 §3 — Cockpit scoreboard pinned right under the compact
           dashboard header. Hidden in any env via
           `NEXT_PUBLIC_SCOREBOARD=0` (decision §6-G). */}
@@ -536,12 +551,12 @@ function ctaEmptyHintFor(
   if (body) return null;
   switch (mode) {
     case "scenario":
-      return "Pick a scenario above to enable the Gemini production gate.";
+      return "Pick a run above to audit it.";
     case "pasted":
-      return "Paste a trace (≥ 20 characters) to enable the Gemini production gate.";
+      return "Paste a run log (≥ 20 characters) to audit it.";
     case "replay":
     default:
-      return "Replay the safe sample first — Gemini needs the streamed snapshot before it can judge.";
+      return "Replay the safe sample first — Gemini needs the streamed run before it can audit.";
   }
 }
 

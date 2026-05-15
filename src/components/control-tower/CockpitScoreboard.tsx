@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AlertTriangle, CheckCircle2, DollarSign, RotateCcw, ShieldOff } from "lucide-react";
+import { Activity, CheckCircle2, DollarSign, RotateCcw, ShieldOff } from "lucide-react";
 import { useCallback, useSyncExternalStore } from "react";
 
 import {
@@ -122,64 +122,66 @@ export function CockpitScoreboard() {
   const avg = averageCostUsd(counters);
   const avgLabel = avg === null ? "—" : formatCurrency(avg);
 
+  // P0-7 — before the first audit, show a single human sentence instead
+  // of a row of zeros. The product's promise is that the *first* audit
+  // is meaningful; an empty scoreboard reads as a dead dashboard.
+  const hasAnyAudit = counters.runsAudited > 0;
+
   return (
     <section
-      aria-label="Cockpit scoreboard"
+      aria-label="Audit history"
       className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3"
     >
       <header className="flex items-center justify-between gap-3">
         <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          Cockpit summary · session
+          Audit history
         </h2>
-        <button
-          type="button"
-          onClick={handleReset}
-          aria-label="Reset cockpit counters"
-          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
-        >
-          <RotateCcw className="h-3 w-3" aria-hidden />
-          Reset
-        </button>
+        {hasAnyAudit ? (
+          <button
+            type="button"
+            onClick={handleReset}
+            aria-label="Reset audit history"
+            className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+          >
+            <RotateCcw className="h-3 w-3" aria-hidden />
+            Reset
+          </button>
+        ) : null}
       </header>
 
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <ScoreboardItem
-          icon={<Activity className="h-3.5 w-3.5 text-zinc-400" aria-hidden />}
-          label="Runs audited"
-          value={counters.runsAudited.toString()}
-          tone="neutral"
-        />
-        <ScoreboardItem
-          icon={<ShieldOff className="h-3.5 w-3.5 text-rose-400" aria-hidden />}
-          label="Blocked"
-          value={counters.blocked.toString()}
-          tone="danger"
-        />
-        <ScoreboardItem
-          icon={<AlertTriangle className="h-3.5 w-3.5 text-amber-400" aria-hidden />}
-          label="Needs review"
-          value={counters.needsReview.toString()}
-          tone="warning"
-        />
-        <ScoreboardItem
-          icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" aria-hidden />}
-          label="Shipped"
-          value={counters.shipped.toString()}
-          tone="success"
-        />
-        <ScoreboardItem
-          icon={<DollarSign className="h-3.5 w-3.5 text-zinc-400" aria-hidden />}
-          label="Avg cost / audit"
-          value={avgLabel}
-          tone="neutral"
-        />
-        <ScoreboardItem
-          icon={<ShieldOff className="h-3.5 w-3.5 text-fuchsia-400" aria-hidden />}
-          label="High-risk calls blocked"
-          value={counters.policyGateTriggered.toString()}
-          tone="accent"
-        />
-      </ul>
+      {hasAnyAudit ? (
+        // P0-7 — 4 metrics maximum on the visible row.
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <ScoreboardItem
+            icon={<Activity className="h-3.5 w-3.5 text-zinc-400" aria-hidden />}
+            label="Runs audited"
+            value={counters.runsAudited.toString()}
+            tone="neutral"
+          />
+          <ScoreboardItem
+            icon={<ShieldOff className="h-3.5 w-3.5 text-rose-400" aria-hidden />}
+            label="Blocked"
+            value={counters.blocked.toString()}
+            tone="danger"
+          />
+          <ScoreboardItem
+            icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" aria-hidden />}
+            label="Ready"
+            value={counters.shipped.toString()}
+            tone="success"
+          />
+          <ScoreboardItem
+            icon={<DollarSign className="h-3.5 w-3.5 text-zinc-400" aria-hidden />}
+            label="Avg cost"
+            value={avgLabel}
+            tone="neutral"
+          />
+        </ul>
+      ) : (
+        <p className="text-sm text-zinc-400">
+          No audit yet. Pick a run to test the gate.
+        </p>
+      )}
     </section>
   );
 }
