@@ -52,14 +52,14 @@ export function ReadinessComparison({
 
   return (
     <section
-      aria-label="Readiness comparison before and after guardrails"
+      aria-label="Ship score before and after safety rules"
       className="flex flex-col gap-4 rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.06] via-white/[0.02] to-emerald-500/[0.06] p-5 sm:p-6"
     >
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-violet-300" aria-hidden />
           <h3 className="text-sm font-semibold text-zinc-50 sm:text-base">
-            Before guardrails → after guardrails
+            Before safety rules → after safety rules
           </h3>
         </div>
         <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
@@ -68,7 +68,11 @@ export function ReadinessComparison({
       </header>
 
       <div className="grid items-center gap-4 sm:grid-cols-[1fr_auto_1fr]">
-        <ReadinessCard label="Before guardrails" result={before} accent="muted" />
+        <ReadinessCard
+          label="Before safety rules"
+          result={before}
+          accent="muted"
+        />
         <div className="flex items-center justify-center sm:flex-col sm:gap-2">
           <ArrowRight
             aria-hidden
@@ -82,13 +86,17 @@ export function ReadinessComparison({
           </span>
           <span
             className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-mono text-sm font-semibold ${deltaTone}`}
-            aria-label={`Score delta ${sign}${Math.abs(delta)}`}
+            aria-label={`Ship score delta ${sign}${Math.abs(delta)}`}
           >
             {sign}
             {Math.abs(delta)}
           </span>
         </div>
-        <ReadinessCard label="After guardrails" result={after} accent="emerald" />
+        <ReadinessCard
+          label="After safety rules"
+          result={after}
+          accent="emerald"
+        />
       </div>
 
       {interpretation ? (
@@ -113,14 +121,14 @@ function ReadinessComparisonPlaceholder({
 }) {
   return (
     <section
-      aria-label="Readiness comparison waiting for guardrails"
+      aria-label="Ship score waiting for safety rules"
       className="flex flex-col gap-4 rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.06] via-white/[0.02] to-emerald-500/[0.06] p-5 sm:p-6"
     >
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-violet-300" aria-hidden />
           <h3 className="text-sm font-semibold text-zinc-50 sm:text-base">
-            Before guardrails → after guardrails
+            Before safety rules → after safety rules
           </h3>
         </div>
         <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
@@ -129,16 +137,21 @@ function ReadinessComparisonPlaceholder({
       </header>
 
       <div className="grid items-center gap-4 sm:grid-cols-[1fr_auto_1fr]">
-        <ReadinessCard label="Before guardrails" result={before} accent="muted" />
+        <ReadinessCard
+          label="Before safety rules"
+          result={before}
+          accent="muted"
+        />
         <div className="flex items-center justify-center sm:flex-col sm:gap-2">
           <ArrowRight aria-hidden className="h-5 w-5 text-zinc-600" />
         </div>
         <article className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-zinc-950/40 p-4 text-center">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            After guardrails
+            After safety rules
           </span>
           <p className="text-sm leading-relaxed text-zinc-300">
-            Apply guardrails below to compute the After score.
+            Apply safety rules below to see how the run scores once they
+            are in place.
           </p>
         </article>
       </div>
@@ -192,25 +205,25 @@ function interpretComparison(
   const b = before.verdict;
   const a = after.verdict;
   if (b === "blocked" && a === "ready") {
-    return "Guardrails moved the run from blocked to ready with monitoring.";
+    return "Safety rules moved the run from blocked to ready with monitoring.";
   }
   if (b === "blocked" && a === "needs_review") {
-    return "Guardrails reduced the immediate blocker, but the run still needs review before production.";
+    return "Safety rules reduced the immediate blocker, but the run still needs review before production.";
   }
   if (b === "blocked" && a === "blocked") {
-    return "Guardrails helped, but critical production gates are still missing.";
+    return "Safety rules helped, but critical production gates are still missing.";
   }
   if (b === "needs_review" && a === "ready") {
-    return "Guardrails closed the residual gaps — this run is now ready with monitoring.";
+    return "Safety rules closed the residual gaps — this run is now ready with monitoring.";
   }
   if (b === "needs_review" && a === "needs_review") {
-    return "Guardrails improved confidence, but the run still needs review before production.";
+    return "Safety rules improved confidence, but the run still needs review before production.";
   }
   if (b === "ready" && a === "ready") {
-    return "Guardrails reinforce the existing audit trail — this run remains ready with monitoring.";
+    return "Safety rules reinforce the existing audit trail — this run remains ready with monitoring.";
   }
   if (after.readinessScore > before.readinessScore) {
-    return "Guardrails moved the readiness score up — see the after-guardrails audit for residual risks.";
+    return "Safety rules raised the ship score — see the after-rules audit for residual risks.";
   }
-  return "Guardrails did not move the verdict — see the after-guardrails audit for residual risks.";
+  return "Safety rules did not move the verdict — see the after-rules audit for residual risks.";
 }
