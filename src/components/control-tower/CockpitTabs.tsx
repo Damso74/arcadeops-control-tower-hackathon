@@ -45,11 +45,14 @@ interface TabDef {
 }
 
 const TAB_DEFS: readonly TabDef[] = [
+  // Primary tab the audience always lands on — verdict + business impact.
   { id: "summary", label: "Summary", icon: Sparkles },
+  // Secondary tabs (progressive disclosure). Renamed to product
+  // language: "Policies" → "Safety rules", "Trace" → "Run log".
   { id: "evidence", label: "Evidence", icon: ScrollText },
-  { id: "policies", label: "Policies", icon: ShieldCheck },
+  { id: "policies", label: "Safety rules", icon: ShieldCheck },
   { id: "infrastructure", label: "Infrastructure", icon: Wrench },
-  { id: "trace", label: "Trace", icon: Terminal },
+  { id: "trace", label: "Run log", icon: Terminal },
 ];
 
 interface CockpitTabsProps {
@@ -162,8 +165,7 @@ export function TraceEmptyState() {
   return (
     <div className="flex items-center gap-2 rounded-lg border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-xs text-zinc-500">
       <CircleDashed className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
-      Trace, raw JSON and debug data appear here once Gemini has audited the
-      run.
+      Run log, raw JSON and debug data appear here once the audit completes.
     </div>
   );
 }
