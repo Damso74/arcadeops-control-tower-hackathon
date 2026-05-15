@@ -191,8 +191,8 @@ export function SelectedRunSummaryCard({
           ) : null}
           {isAwaiting ? (
             <p className="text-[11px] leading-snug text-zinc-500">
-              Run selected. Review the summary, then launch the Gemini
-              production gate.
+              Run selected. Click <strong>Audit this run</strong> to see the
+              production decision.
             </p>
           ) : null}
         </div>
