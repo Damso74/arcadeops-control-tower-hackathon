@@ -4,25 +4,39 @@ import { ArrowRight, Sparkles, X } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 /**
- * Lot 1d (P1#18) — pedagogical 1-line banner shown right under the
- * sticky stepper. Spells out the recommended 4-step demo path so a
- * first-time judge knows exactly what to click. Dismissible (the choice
- * is persisted in localStorage `arcadeops-demo-banner-dismissed-v1` so
- * power users only see it once).
+ * UX V2.2 §15 — action-oriented recommended demo path banner.
  *
- * Strictly cosmetic — no global state, no events fired. Implemented
- * with `useSyncExternalStore` so the dismiss state stays consistent
- * with localStorage even across tabs and hydrates without violating
- * React 19's `set-state-in-effect` rule.
+ * 1-line banner shown right under the compact dashboard header. Spells
+ * out the 5 steps a first-time judge should click. Dismissible (the
+ * choice is persisted in localStorage `arcadeops-demo-banner-dismissed-v1`
+ * so power users only see it once). Steps that map to a visible page
+ * section auto-scroll on click — the others are visual only so we never
+ * lie about what the user can interact with.
  */
 
 const STORAGE_KEY = "arcadeops-demo-banner-dismissed-v1";
 
-const STEPS: ReadonlyArray<{ index: number; label: string }> = [
-  { index: 1, label: "Audit critical CRM run" },
-  { index: 2, label: "Watch Gemini block it" },
-  { index: 3, label: "Audit safe research run" },
-  { index: 4, label: "Watch it ship with monitoring" },
+interface BannerStep {
+  index: number;
+  label: string;
+  /** Optional CSS selector to scroll into view when the user clicks the step. */
+  target?: string;
+}
+
+const STEPS: ReadonlyArray<BannerStep> = [
+  {
+    index: 1,
+    label: "Select critical CRM run",
+    target: '[data-section="agent-test-gallery"]',
+  },
+  { index: 2, label: "Run Gemini gate", target: "#summary-anchor" },
+  { index: 3, label: "Watch Gate Closed" },
+  {
+    index: 4,
+    label: "Select safe research run",
+    target: '[data-section="agent-test-gallery"]',
+  },
+  { index: 5, label: "Watch Gate Open" },
 ];
 
 // Module-level subscriber set so the dismiss button can synchronously
@@ -66,6 +80,13 @@ function getServerSnapshot(): boolean {
   return false;
 }
 
+function scrollToSelector(selector: string): void {
+  if (typeof document === "undefined") return;
+  const el = document.querySelector(selector);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function dismiss() {
   try {
     if (typeof window !== "undefined") {
@@ -98,13 +119,33 @@ export function RecommendedDemoBanner() {
       <ol className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-300">
         {STEPS.map((step, idx) => (
           <li key={step.index} className="inline-flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className="grid h-4 w-4 flex-none place-items-center rounded-full bg-emerald-400/20 font-mono text-[9px] font-semibold text-emerald-200"
-            >
-              {step.index}
-            </span>
-            <span className="text-zinc-200">{step.label}</span>
+            {step.target ? (
+              <button
+                type="button"
+                onClick={() => scrollToSelector(step.target as string)}
+                className="inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-emerald-400/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40"
+              >
+                <span
+                  aria-hidden
+                  className="grid h-4 w-4 flex-none place-items-center rounded-full bg-emerald-400/20 font-mono text-[9px] font-semibold text-emerald-200"
+                >
+                  {step.index}
+                </span>
+                <span className="text-zinc-200 underline decoration-dotted decoration-emerald-400/40 underline-offset-4">
+                  {step.label}
+                </span>
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className="grid h-4 w-4 flex-none place-items-center rounded-full bg-emerald-400/20 font-mono text-[9px] font-semibold text-emerald-200"
+                >
+                  {step.index}
+                </span>
+                <span className="text-zinc-200">{step.label}</span>
+              </span>
+            )}
             {idx < STEPS.length - 1 ? (
               <ArrowRight aria-hidden className="h-3 w-3 text-zinc-600" />
             ) : null}

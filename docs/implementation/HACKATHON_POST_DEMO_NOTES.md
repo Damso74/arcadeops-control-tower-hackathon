@@ -90,6 +90,89 @@
 
 ---
 
+## 2026-05-15 — UX V2.2 Gate Mode (mission `ARCADEOPS_GATE_MODE_UI_V2_2`)
+
+Refonte cockpit guided pour le hackathon AI Agent Olympics — un seul commit
+`feat(ui): add guided Gate Mode cockpit for hackathon demo` couvrant les
+22 sections du brief V2.2.
+
+**Nouveautés introduites :**
+
+- **Compact security audit dashboard header** (`CompactDashboardHeader.tsx`) —
+  remplace le hero V0–V5. Embarque l'emblème `BrandLogoMark` (radar + bouclier
+  inline SVG, pas d'asset externe), titre `Production Security Audit`,
+  sous-titre, punchline V2 verbatim, badges `Production Gate` + `Live Gemini
+  Audit`/`Deterministic Replay` + `Vultr Online` (réutilisation de
+  `pollHealth`).
+- **Agent Test Gallery** (`TraceScenarioPicker.tsx`) — section renommée +
+  helper text + CTA `Select run` (au lieu de `Audit this run`, qui prêtait à
+  confusion). Marqueurs `data-section="agent-test-gallery"` et
+  `data-cta="select-run"` pour scroll programmatique.
+- **Selected Run Summary card** (`SelectedRunSummaryCard.tsx`) — cœur du
+  cockpit. Affiche titre / risque / décision attendue / 3 findings clés /
+  metrics ribbon / `GateStatus` / CTA primaire « Run Gemini Production Gate ».
+  Pure présentationnel, pilote l'audit via le hook `useGeminiJudge`.
+- **Gate Status** (`GateStatus.tsx`) — signature visuelle ArcadeOps. Mappe
+  le verdict Gemini sur 4 états cinématiques (`awaiting` / `blocked` /
+  `paused` / `open`) avec emblèmes Lucide + palette dédiée.
+- **CockpitTabs** (`CockpitTabs.tsx`) — primitive de progressive disclosure,
+  ARIA `role="tablist"`. Onglets `Summary / Evidence / Policies /
+  Infrastructure / Trace`. Lazy-mount des panels inactifs.
+- **AgentPipelineDiagram** (`AgentPipelineDiagram.tsx`) — chaîne narrative
+  par scénario (CRM critique, support draft, recherche safe).
+- **GeminiScanTicker** (`GeminiScanTicker.tsx`) — animation scan 5 étapes
+  pendant l'audit (2 s ticker plancher pour ne jamais "trop court").
+- **VerdictRevealCard** (`VerdictRevealCard.tsx`) — wrapper cinématique du
+  `JudgeResultView` historique : Gate Status hero banner + auto-scroll +
+  fade-in restreint. La `InfrastructureProofCard` est masquée à l'intérieur
+  car déjà servie par l'onglet Infrastructure.
+- **TraceJsonInspector** (`TraceJsonInspector.tsx`) — onglet Trace, hidden
+  by default. Affiche le JSON brut + bouton « Download verdict JSON » ; se
+  remplit uniquement après verdict.
+- **`useGeminiJudge` hook** (`src/lib/control-tower/use-gemini-judge.ts`) —
+  centralise l'appel `/api/gemini/judge` (state machine
+  `idle | loading | ready | error`, ticker plancher 2 s, abort signal,
+  reset sur changement de `judgeKey`, exposition `lastAuditLatencyMs` réel).
+- **`RecommendedDemoBanner`** retravaillé — 5 étapes action-oriented,
+  steps cliquables avec `scrollIntoView` (Agent Test Gallery + Summary
+  anchor), persistance `localStorage` inchangée.
+- **Smoke V2.2** (`scripts/smoke-gate-mode-v22.ts` + entrée
+  `npm run smoke:gate-mode-v22`) — couvre les 17 assertions du brief §20,
+  dont 12 assertions HTML + 2 assertions verdict déterministes via
+  `applyProductionPolicyGates` + `enforceVerdictConsistency` ; 3 dynamiques
+  (React #185, scan animation, persistance Copy/Export après verdict)
+  marquées `MANUAL` et validées via browser MCP en prod.
+
+**Préservé verbatim (zéro régression) :**
+
+- Punchline V2 : *Gemini judges. Vultr runs. ArcadeOps blocks unsafe
+  autonomous agents before production.*
+- Contrat `useSyncExternalStore` du `CockpitScoreboard` (snapshot caché +
+  `countersEqual`) intact, déplacé sous le header sans modification.
+- 5 production policies (T1-T5) — `scripts/smoke-policy-gates.ts` reste
+  vert.
+- PasteCard `cockpit_v6` (samples + Clear + Export verdict JSON).
+- Vultr Infrastructure Proof Card + health polling 30 s.
+- `NEXT_PUBLIC_LIVE_VULTR=0` (mode Live ArcadeOps masqué en prod publique).
+- Wow path historique : critical CRM → BLOCKED + Gate Closed,
+  ExpectedVsActualBadge MATCH, scoreboard tick à 1.
+
+**Composants devenus secondaires (non supprimés) :**
+
+- `GeminiJudgePanel.tsx` — son state machine est désormais portée par
+  `useGeminiJudge`, mais l'export `JudgeResultView` + `verdictPalette`
+  reste réutilisé par `VerdictRevealCard`. À considérer pour suppression
+  post-hackathon si on confirme qu'aucune autre surface ne dépend du
+  panel original.
+
+**Décisions de scope (refus volontaires) :**
+
+- **§18 sidebar** : skipped (le brief autorise explicitement le skip).
+- Pas de nouveau scénario, pas de nouvelle route, pas de refonte
+  `ControlTowerExperience.tsx` au-delà du strict nécessaire.
+
+---
+
 ## Format pour la prochaine entrée
 
 Si on rouvre ce fichier post-hackathon, ajouter une nouvelle section avec timestamp ISO :

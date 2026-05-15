@@ -60,16 +60,16 @@ export function TraceScenarioPicker({
 
   return (
     <section
-      aria-label="Choose a run to audit"
+      aria-label="Agent Test Gallery"
+      data-section="agent-test-gallery"
       className="flex flex-col gap-4"
     >
       <header className="flex flex-col gap-1">
         <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          1 · Pick an agent run
+          1 · Agent Test Gallery
         </h2>
         <p className="text-sm text-zinc-300">
-          Catch unsafe AI agent runs before they ship. Pick the unsafe sample
-          to see the production gate in action.
+          Choose a pre-recorded agent run or paste your own trace.
         </p>
       </header>
 
@@ -190,9 +190,10 @@ function CriticalScenarioCard({
 
       <span
         aria-hidden
+        data-cta="select-run"
         className="mt-1 inline-flex w-fit items-center gap-2 rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-500/20 transition-colors group-hover:bg-red-400"
       >
-        Audit this run
+        Select run
         <ArrowRight className="h-4 w-4" aria-hidden />
       </span>
     </button>
@@ -234,6 +235,7 @@ function SecondaryScenarioCard({
       <p className="text-xs leading-relaxed text-zinc-400">{description}</p>
       <span
         aria-hidden
+        data-cta="select-run"
         className={`mt-auto inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ${palette.cta}`}
       >
         {SECONDARY_CTA_LABEL}
@@ -281,9 +283,10 @@ function PasteCard({
       </p>
       <span
         aria-hidden
+        data-cta="select-run"
         className="mt-auto inline-flex w-fit items-center gap-1 rounded-md bg-violet-400/15 px-2 py-1 text-[11px] font-medium text-violet-100"
       >
-        Open paste box
+        Select run
         <ArrowRight className="h-3 w-3" aria-hidden />
       </span>
     </button>
@@ -400,7 +403,8 @@ function riskPalette(level: ScenarioRiskLevel): {
   }
 }
 
-// Lot 1a (P0#3) — uniform CTA across the 3 scenario tiers so the
-// picker reads as "audit any of these runs" instead of mixing
-// "Audit unsafe / Review this / Audit this".
-const SECONDARY_CTA_LABEL = "Audit this run";
+// V2.2 §5 — uniform CTA across the 4 cards. "Select run" replaces
+// "Audit this run" because the actual audit only happens later, when
+// the user clicks "Run Gemini Production Gate" inside the Selected
+// Run Summary card.
+const SECONDARY_CTA_LABEL = "Select run";

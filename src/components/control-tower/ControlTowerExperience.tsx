@@ -14,25 +14,34 @@ import {
   type TraceScenario,
 } from "@/lib/control-tower/scenarios";
 import { incrementCounter } from "@/lib/control-tower/scoreboard-store";
+import { useGeminiJudge } from "@/lib/control-tower/use-gemini-judge";
 
 import { CockpitScoreboard, notifyScoreboardChange } from "./CockpitScoreboard";
+import {
+  CockpitTabs,
+  TraceEmptyState,
+  type CockpitTabId,
+} from "./CockpitTabs";
 import { DemoMissionLauncher } from "./DemoMissionLauncher";
-import { GeminiJudgePanel } from "./GeminiJudgePanel";
+import { GeminiScanTicker } from "./GeminiScanTicker";
 import { GuardrailsPanel } from "./GuardrailsPanel";
+import { InfrastructureProofCard } from "./InfrastructureProofCard";
 import { ObservabilityPanel } from "./ObservabilityPanel";
 import { PastedTraceInput } from "./PastedTraceInput";
 import { ProductionPoliciesCard } from "./ProductionPoliciesCard";
 import { ReadinessComparison } from "./ReadinessComparison";
 import { ScenarioEvidenceTimeline } from "./ScenarioEvidenceTimeline";
+import { SelectedRunSummaryCard } from "./SelectedRunSummaryCard";
+import { TraceJsonInspector } from "./TraceJsonInspector";
 import {
   TraceScenarioPicker,
   type ScenarioPickerSelection,
 } from "./TraceScenarioPicker";
+import { VerdictRevealCard } from "./VerdictRevealCard";
 
-// Lot 3a — kill-switch decision §6-G in the master plan: scoreboard is
-// ON by default, can be hidden in any environment by setting
-// `NEXT_PUBLIC_SCOREBOARD=0` at build time. Inlined as a module-level
-// constant so the dead branch is fully tree-shaken in production.
+// V2.2 §3 — scoreboard kill-switch (decision §6-G in the master plan):
+// scoreboard is ON by default, can be hidden in any environment by
+// setting `NEXT_PUBLIC_SCOREBOARD=0` at build time.
 const SCOREBOARD_ENABLED = process.env.NEXT_PUBLIC_SCOREBOARD !== "0";
 
 const MAX_TRACE_CHARS = 12_000;
@@ -42,19 +51,25 @@ interface ControlTowerExperienceProps {
 }
 
 /**
- * Top-level state machine for the production-gate flow.
+ * UX V2.2 — guided cockpit state machine.
  *
- * Three input modes feed a single Gemini judge call:
- *   - "scenario" — pre-canned trace (the wow path)
- *   - "replay"   — original V0–V3 deterministic SSE replay
+ * Flow that drives the new layout:
+ *
+ *   pick → inspect (after Select run) → decide (after Gemini verdict)
+ *
+ * Tabs sit *inside* the experience and only become meaningful once a
+ * run is selected. Default tab after Select run is "summary" — the
+ * brief V2.2 §10 mandates that Evidence / Policies / Infrastructure /
+ * Trace stay hidden by default.
+ *
+ * Three input modes still feed the same Gemini judge call:
+ *   - "scenario" — pre-canned trace (the wow path, default on mount)
+ *   - "replay"   — original deterministic SSE replay (gated when live)
  *   - "pasted"   — user pasted their own trace
  *
- * After the first verdict, the user can pick guardrails and re-score the
- * SAME trace as a what-if simulation. The before/after comparison shows
- * up automatically once both results are available.
- *
- * We deliberately do not "auto-run" Gemini on load — every judge call is
- * triggered by an explicit user action.
+ * Once a verdict lands the user can pick guardrails and re-score the
+ * SAME trace as a what-if simulation. The before/after comparison
+ * shows up automatically once both results are available.
  */
 export function ControlTowerExperience({
   liveAvailable,
@@ -70,20 +85,16 @@ export function ControlTowerExperience({
   const [replayMissionPrompt, setReplayMissionPrompt] = useState<string>("");
   const [judgeBefore, setJudgeBefore] = useState<GeminiJudgeResult | null>(null);
   const [judgeAfter, setJudgeAfter] = useState<GeminiJudgeResult | null>(null);
+  const [activeTab, setActiveTab] = useState<CockpitTabId>("summary");
+  const [hasUserSelectedRun, setHasUserSelectedRun] = useState<boolean>(false);
+  const [helperVisible, setHelperVisible] = useState<boolean>(false);
 
-  // Lot 1a (P0#5) — once the first verdict lands, scroll the judge
-  // section into view so the wow moment is never below the fold on
-  // 1080p screens. We intentionally fire on every transition to a
-  // non-null judgeBefore (re-runs included), since each one is a
-  // fresh "first verdict" against the currently audited trace.
-  const judgeSectionRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!judgeBefore) return;
-    judgeSectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, [judgeBefore]);
+  // V2.2 §6 — Selected Run Summary anchor used to scroll into view on
+  // every Select run click. The summary card is the only landing
+  // surface inside the cockpit, so we scroll directly to it instead
+  // of an outer wrapper.
+  const summaryAnchorRef = useRef<HTMLDivElement | null>(null);
+  const helperTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeScenario = useMemo<TraceScenario | null>(
     () =>
@@ -93,50 +104,15 @@ export function ControlTowerExperience({
     [selection],
   );
 
-  const handleSelect = useCallback(
-    (next: ScenarioPickerSelection) => {
-      // Wipe both verdicts whenever the user changes the audited trace —
-      // a stale "before" against a different run would lie to the judge.
-      setSelection(next);
-      setJudgeBefore(null);
-      setJudgeAfter(null);
-    },
-    [],
-  );
-
-  const handleReplaySnapshot = useCallback(
-    (snapshot: JudgeRunSnapshot | null, prompt: string) => {
-      setReplaySnapshot(snapshot);
-      setReplayMissionPrompt(prompt);
-      // If the user starts a new replay run while a verdict is already on
-      // screen, drop both — the next click will re-judge against the
-      // freshly streamed snapshot.
-      if (selection.mode === "replay") {
-        setJudgeBefore(null);
-        setJudgeAfter(null);
-      }
-    },
-    [selection.mode],
-  );
-
-  // Build the judge request body for the currently selected mode. Returns
-  // `null` while the input is incomplete (no scenario, empty paste, no
-  // replay snapshot yet) — the panel uses that to disable its button.
   const judgeRequestBody = useMemo<JudgeRequestBody | null>(() => {
     if (selection.mode === "scenario") {
       if (!activeScenario) return null;
-      return {
-        mode: "scenario_trace",
-        scenarioId: activeScenario.id,
-      };
+      return { mode: "scenario_trace", scenarioId: activeScenario.id };
     }
     if (selection.mode === "pasted") {
       const trimmed = pastedTrace.trim();
       if (trimmed.length < 20 || trimmed.length > MAX_TRACE_CHARS) return null;
-      return {
-        mode: "pasted_trace",
-        traceText: trimmed,
-      };
+      return { mode: "pasted_trace", traceText: trimmed };
     }
     if (selection.mode === "replay") {
       if (!replaySnapshot) return null;
@@ -155,9 +131,9 @@ export function ControlTowerExperience({
     replayMissionPrompt,
   ]);
 
-  // Stable key used to remount the judge panel when the audited trace
-  // identity changes. Without this, an in-flight Gemini call from a
-  // previous scenario could surface a stale verdict against the new one.
+  // Stable identity used to wipe the verdict when the audited trace
+  // changes. Same shape as the historical panel `key` prop so the
+  // semantics are preserved end-to-end.
   const judgeKey = useMemo(() => {
     switch (selection.mode) {
       case "scenario":
@@ -182,18 +158,14 @@ export function ControlTowerExperience({
     replaySnapshot,
   ]);
 
-  const handleJudgeBefore = useCallback(
+  const handleJudgeResult = useCallback(
     (result: GeminiJudgeResult) => {
       setJudgeBefore(result);
-      // Always wipe the after-result when the user re-runs the main judge —
-      // the re-score must match the latest verdict, not a stale one.
       setJudgeAfter(null);
 
-      // Lot 3a (P1#21) — feed the cockpit scoreboard. Cost is sourced
+      // V2.2 §3 — feed the cockpit scoreboard. Cost is sourced
       // from the audited snapshot when available (scenario / replay) and
-      // omitted for free-form pasted traces (no real cost to attribute).
-      // The scoreboard component subscribes via `notifyScoreboardChange`
-      // so the new counts repaint without requiring a parent re-render.
+      // omitted for free-form pasted traces.
       if (SCOREBOARD_ENABLED) {
         let costUsd: number | undefined;
         if (selection.mode === "scenario" && activeScenario) {
@@ -209,17 +181,70 @@ export function ControlTowerExperience({
         });
         notifyScoreboardChange();
       }
+
+      // V2.2 §12 — once Gemini lands, snap to Summary so the verdict
+      // is visible immediately. The VerdictRevealCard then auto-
+      // scrolls the Gate Status into view.
+      setActiveTab("summary");
     },
     [selection.mode, activeScenario, replaySnapshot],
   );
+
+  const judge = useGeminiJudge({
+    requestBody: judgeRequestBody,
+    judgeKey,
+    onResult: handleJudgeResult,
+  });
+
+  // V2.2 §6 — Select run is the new explicit step. Wipe both verdicts,
+  // mark the user as having selected a run, default the active tab
+  // back to Summary, scroll the Selected Run Summary into view, and
+  // surface the helper text for ~6s.
+  const handleSelect = useCallback((next: ScenarioPickerSelection) => {
+    setSelection(next);
+    setJudgeBefore(null);
+    setJudgeAfter(null);
+    setHasUserSelectedRun(true);
+    setActiveTab("summary");
+    setHelperVisible(true);
+    if (helperTimeoutRef.current) clearTimeout(helperTimeoutRef.current);
+    helperTimeoutRef.current = setTimeout(() => setHelperVisible(false), 6000);
+    // Defer the scroll one frame so the summary card has a chance to
+    // mount with the new selection — otherwise we scroll to the old
+    // bounding box.
+    requestAnimationFrame(() => {
+      summaryAnchorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (helperTimeoutRef.current) clearTimeout(helperTimeoutRef.current);
+    };
+  }, []);
+
+  const handleReplaySnapshot = useCallback(
+    (snapshot: JudgeRunSnapshot | null, prompt: string) => {
+      setReplaySnapshot(snapshot);
+      setReplayMissionPrompt(prompt);
+      if (selection.mode === "replay") {
+        setJudgeBefore(null);
+        setJudgeAfter(null);
+      }
+    },
+    [selection.mode],
+  );
+
+  const summaryMode = selection.mode;
+  const summaryHint = ctaEmptyHintFor(selection.mode, judgeRequestBody);
 
   const guardrailsForActiveSource = useMemo<readonly string[]>(() => {
     if (selection.mode === "scenario" && activeScenario) {
       return activeScenario.recommendedGuardrails;
     }
-    // For pasted / replay traces we cannot know which guardrails are
-    // "recommended" without re-asking Gemini — fall back to the highest-
-    // value 5 from the catalogue.
     return [
       "Require human approval for destructive tools",
       "Block outbound messages without review",
@@ -229,53 +254,48 @@ export function ControlTowerExperience({
     ];
   }, [selection.mode, activeScenario]);
 
-  return (
-    <div className="flex flex-col gap-8">
-      {/*
-       * Lot 3a (P1#21) — cockpit scoreboard pinned at the top of the
-       * experience, just under the sticky 3-step stepper rendered by
-       * `page.tsx`. Reads counters from localStorage so a power user
-       * can quickly compare runs across reloads. Hidden in any env via
-       * `NEXT_PUBLIC_SCOREBOARD=0` (decision §6-G).
-       */}
-      {SCOREBOARD_ENABLED ? <CockpitScoreboard /> : null}
+  const expectedVerdictForActive = useMemo(() => {
+    if (selection.mode === "scenario" && activeScenario) {
+      return activeScenario.expectedVerdict;
+    }
+    return null;
+  }, [selection.mode, activeScenario]);
 
-      {/* Lot 1c — id="pick" anchors the cockpit stepper top-bar. */}
-      <div id="pick" className="scroll-mt-24">
-        <TraceScenarioPicker
-          scenarios={TRACE_SCENARIOS}
-          selection={selection}
-          onSelect={handleSelect}
-          showReplayLink={liveAvailable}
-        />
-      </div>
+  const summaryPanel = (
+    <div className="flex flex-col gap-5">
+      <div ref={summaryAnchorRef} id="summary-anchor" className="scroll-mt-24" />
 
-      {/* Mode-specific input panel — id="evidence" anchor. */}
-      {selection.mode === "scenario" && activeScenario ? (
-        <section id="evidence" className="flex scroll-mt-24 flex-col gap-5">
-          <ScenarioEvidenceTimeline scenario={activeScenario} />
-          <ObservabilityPanel
-            observability={activeScenario.snapshot.observability}
-            compact
-          />
-        </section>
+      <SelectedRunSummaryCard
+        mode={summaryMode}
+        scenario={activeScenario}
+        verdict={judgeBefore}
+        busy={judge.busy}
+        ctaEnabled={Boolean(judgeRequestBody)}
+        emptyHint={summaryHint}
+        onRunGate={() => void judge.runJudge()}
+      />
+
+      {helperVisible && hasUserSelectedRun && !judgeBefore && !judge.busy ? (
+        <p
+          role="status"
+          className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] px-4 py-2 text-xs text-emerald-100"
+        >
+          Run selected. Review the summary, then launch the Gemini production
+          gate.
+        </p>
       ) : null}
 
+      {/* Mode-specific paste / replay surfaces stay in the Summary tab
+          when those are the active mode — judges should not have to
+          dig into Evidence to type or stream a custom trace. */}
       {selection.mode === "pasted" ? (
-        <section id="evidence" className="flex scroll-mt-24 flex-col gap-3">
-          <header className="flex flex-col gap-1">
-            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-              2 · Paste your trace
-            </h2>
-          </header>
-
+        <section
+          aria-label="Paste your own trace"
+          className="flex flex-col gap-3"
+        >
           <PastedTraceInput
             value={pastedTrace}
             onChange={setPastedTrace}
-            // Lot 2c — three sample loaders wired on the canonical
-            // scenario ids. Loading any sample wipes the previous
-            // verdicts so the next click re-judges against the new
-            // pasted text (same logic as `handleSelect`).
             onLoadUnsafe={() => {
               const unsafe = findScenarioById("blocked_crm_write_agent");
               if (unsafe) {
@@ -311,18 +331,10 @@ export function ControlTowerExperience({
       ) : null}
 
       {selection.mode === "replay" ? (
-        <section id="evidence" className="flex scroll-mt-24 flex-col gap-3">
-          <header className="flex flex-col gap-1">
-            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-              2 · Replay the safe sample
-            </h2>
-            <p className="text-sm text-zinc-300">
-              Deterministic SSE replay of the bundled trace. Stream phases,
-              tool calls and observability metrics — then let Gemini judge
-              the run.
-            </p>
-          </header>
-
+        <section
+          aria-label="Deterministic replay"
+          className="flex flex-col gap-3"
+        >
           <DemoMissionLauncher
             liveAvailable={liveAvailable}
             onSnapshotReady={handleReplaySnapshot}
@@ -330,92 +342,203 @@ export function ControlTowerExperience({
         </section>
       ) : null}
 
-      {/* Reliability judge — id="decide" anchor. */}
-      <section
-        id="decide"
-        ref={judgeSectionRef}
-        className="flex scroll-mt-24 flex-col gap-3"
-      >
-        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          3 · Gemini decides: ship, review or block
-        </h2>
-        <GeminiJudgePanel
-          key={judgeKey}
-          requestBody={judgeRequestBody}
-          onResult={handleJudgeBefore}
-          actionLabel={actionLabelFor(selection.mode)}
-          emptyHint={emptyHintFor(selection.mode)}
-        />
-        {/*
-         * Lot 2b — production policies enforced card. Always rendered
-         * inside the Decide section so a judge sees the rule catalogue
-         * even before the first audit; once a verdict lands the card
-         * lights up which rules fired vs stayed armed.
-         */}
-        <ProductionPoliciesCard result={judgeBefore} />
-        {/*
-         * Lot 2b (P0#8) — Before/After is now part of the Decide
-         * section, lifted out of the Guardrails panel. Renders a
-         * placeholder for the After side as soon as the first verdict
-         * lands so the wow-moment frame is visible immediately.
-         */}
-        {judgeBefore ? (
-          <ReadinessComparison
-            before={judgeBefore}
-            after={judgeAfter}
-            showPlaceholderWhenAfterMissing
-          />
-        ) : null}
-      </section>
+      {/* V2.2 §11 — purposeful Gemini scan animation while the audit
+          is in flight. Replaces the previous panel-internal ticker. */}
+      {judge.busy ? <GeminiScanTicker /> : null}
 
-      {/* Guardrails + re-score (only shown after the first verdict) */}
-      {judgeBefore ? (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            4 · Add guardrails &amp; re-score
-          </h2>
-          <GuardrailsPanel
-            // Remount the panel when the audited trace changes so the
-            // checkbox state never carries over between runs.
-            key={`guardrails:${judgeKey}`}
-            remediationSource={remediationSourceFor(
-              selection.mode,
-              activeScenario,
-              replaySnapshot,
-              replayMissionPrompt,
-              pastedTrace,
-            )}
-            recommendedGuardrails={guardrailsForActiveSource}
-            initialSelectedGuardrails={
-              activeScenario?.defaultSelectedGuardrails ?? []
-            }
-            afterResult={judgeAfter}
-            onAfterResult={setJudgeAfter}
-          />
-        </section>
+      {judge.state.status === "error" ? (
+        <p
+          role="status"
+          className="rounded-lg border border-red-400/30 bg-red-400/[0.06] px-4 py-3 text-sm text-red-200"
+        >
+          {judge.state.message}
+        </p>
       ) : null}
+
+      {/* V2.2 §13 — cinematic verdict reveal, integrated into Summary so
+          the result lands without making the user navigate. */}
+      {judgeBefore ? (
+        <VerdictRevealCard
+          result={judgeBefore}
+          expectedVerdict={expectedVerdictForActive}
+          lastAuditLatencyMs={judge.lastAuditLatencyMs}
+        />
+      ) : null}
+
+      {/* Before/After is part of Summary so the wow-moment frame is
+          visible immediately after the first verdict. */}
+      {judgeBefore ? (
+        <ReadinessComparison
+          before={judgeBefore}
+          after={judgeAfter}
+          showPlaceholderWhenAfterMissing
+        />
+      ) : null}
+    </div>
+  );
+
+  const evidencePanel = (
+    <div className="flex flex-col gap-5">
+      {selection.mode === "scenario" && activeScenario ? (
+        <>
+          <ScenarioEvidenceTimeline scenario={activeScenario} />
+          <ObservabilityPanel
+            observability={activeScenario.snapshot.observability}
+            compact
+          />
+        </>
+      ) : null}
+      {selection.mode === "pasted" ? (
+        <PastedTraceInput
+          value={pastedTrace}
+          onChange={setPastedTrace}
+          onLoadUnsafe={() => {
+            const unsafe = findScenarioById("blocked_crm_write_agent");
+            if (unsafe) {
+              setPastedTrace(unsafe.traceText);
+              setJudgeBefore(null);
+              setJudgeAfter(null);
+            }
+          }}
+          onLoadSafe={() => {
+            const safe = findScenarioById("ready_research_agent");
+            if (safe) {
+              setPastedTrace(safe.traceText);
+              setJudgeBefore(null);
+              setJudgeAfter(null);
+            }
+          }}
+          onLoadMultiAgent={() => {
+            const multi = findScenarioById("multi_agent_escalation");
+            if (multi) {
+              setPastedTrace(multi.traceText);
+              setJudgeBefore(null);
+              setJudgeAfter(null);
+            }
+          }}
+          onClear={() => {
+            setPastedTrace("");
+            setJudgeBefore(null);
+            setJudgeAfter(null);
+          }}
+          maxChars={MAX_TRACE_CHARS}
+        />
+      ) : null}
+      {selection.mode === "replay" ? (
+        <DemoMissionLauncher
+          liveAvailable={liveAvailable}
+          onSnapshotReady={handleReplaySnapshot}
+        />
+      ) : null}
+    </div>
+  );
+
+  const policiesPanel = (
+    <div className="flex flex-col gap-4">
+      <ProductionPoliciesCard result={judgeBefore} />
+      {judgeBefore ? (
+        <GuardrailsPanel
+          key={`guardrails:${judgeKey}`}
+          remediationSource={remediationSourceFor(
+            selection.mode,
+            activeScenario,
+            replaySnapshot,
+            replayMissionPrompt,
+            pastedTrace,
+          )}
+          recommendedGuardrails={guardrailsForActiveSource}
+          initialSelectedGuardrails={
+            activeScenario?.defaultSelectedGuardrails ?? []
+          }
+          afterResult={judgeAfter}
+          onAfterResult={setJudgeAfter}
+        />
+      ) : null}
+    </div>
+  );
+
+  const infrastructurePanel = (
+    <div className="flex flex-col gap-4">
+      <InfrastructureProofCard
+        lastAuditLatencyMs={judge.lastAuditLatencyMs}
+      />
+    </div>
+  );
+
+  const tracePanel = (
+    <div className="flex flex-col gap-4">
+      {judgeBefore ? (
+        <TraceJsonInspector
+          result={judgeBefore}
+          afterResult={judgeAfter}
+          activeScenario={activeScenario}
+          pastedTrace={
+            selection.mode === "pasted" ? pastedTrace : undefined
+          }
+          replaySnapshot={
+            selection.mode === "replay" ? replaySnapshot : undefined
+          }
+          replayMissionPrompt={
+            selection.mode === "replay" ? replayMissionPrompt : undefined
+          }
+        />
+      ) : (
+        <TraceEmptyState />
+      )}
+    </div>
+  );
+
+  const tabPanels: Partial<Record<CockpitTabId, React.ReactNode>> = {
+    summary: summaryPanel,
+    evidence: evidencePanel,
+    policies: policiesPanel,
+    infrastructure: infrastructurePanel,
+    trace: tracePanel,
+  };
+
+  // Pulse hint — flag the freshly-relevant tabs so the user discovers
+  // them after the verdict lands without forcing the navigation.
+  const tabPulse: Partial<Record<CockpitTabId, boolean>> = {
+    evidence: judgeBefore !== null,
+    policies: judgeBefore?.policyGate?.triggered === true,
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      {/* V2.2 §3 — Cockpit scoreboard pinned right under the compact
+          dashboard header. Hidden in any env via
+          `NEXT_PUBLIC_SCOREBOARD=0` (decision §6-G). */}
+      {SCOREBOARD_ENABLED ? <CockpitScoreboard /> : null}
+
+      <div id="pick" className="scroll-mt-24">
+        <TraceScenarioPicker
+          scenarios={TRACE_SCENARIOS}
+          selection={selection}
+          onSelect={handleSelect}
+          showReplayLink={liveAvailable}
+        />
+      </div>
+
+      <CockpitTabs
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        panels={tabPanels}
+        pulse={tabPulse}
+      />
     </div>
   );
 }
 
-function actionLabelFor(mode: ScenarioPickerSelection["mode"]): string {
+function ctaEmptyHintFor(
+  mode: ScenarioPickerSelection["mode"],
+  body: JudgeRequestBody | null,
+): string | null {
+  if (body) return null;
   switch (mode) {
     case "scenario":
-      return "Run Gemini judge";
+      return "Pick a scenario above to enable the Gemini production gate.";
     case "pasted":
-      return "Judge pasted trace";
-    case "replay":
-    default:
-      return "Run Gemini reliability judge";
-  }
-}
-
-function emptyHintFor(mode: ScenarioPickerSelection["mode"]): string {
-  switch (mode) {
-    case "scenario":
-      return "Pick a scenario above to enable the judge.";
-    case "pasted":
-      return "Paste a trace (≥ 20 characters) to enable the judge.";
+      return "Paste a trace (≥ 20 characters) to enable the Gemini production gate.";
     case "replay":
     default:
       return "Replay the safe sample first — Gemini needs the streamed snapshot before it can judge.";
@@ -446,7 +569,5 @@ function remediationSourceFor(
       mission: replayMissionPrompt || undefined,
     };
   }
-  // Fall back to pasted text — even if the user has nothing useful in the
-  // textarea right now, the panel itself forces a wipe between modes.
   return { kind: "pasted", traceText: pastedTrace.trim() };
 }

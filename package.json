@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "smoke:policy-gates": "tsx scripts/smoke-policy-gates.ts",
+    "smoke:gate-mode-v22": "tsx scripts/smoke-gate-mode-v22.ts"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",
