@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { buildFallbackVerdict } from "@/lib/control-tower/fallback-verdict";
 import type {
   GeminiJudgeResult,
   JudgeRequestBody,
@@ -348,12 +349,47 @@ export function ControlTowerExperience({
       {judge.busy ? <GeminiScanTicker /> : null}
 
       {judge.state.status === "error" ? (
-        <p
+        // P0-8 — never surface a raw API error in the main flow. We
+        // tell the user Gemini is busy in plain English, offer a
+        // one-click retry, and let them switch to the bundled replay
+        // proof so the demo never dead-ends. The technical message is
+        // tucked into the Technical proof disclosure further down the
+        // page (and inside the verdict summary copy if they hit "Use
+        // replay proof").
+        <div
           role="status"
-          className="rounded-lg border border-red-400/30 bg-red-400/[0.06] px-4 py-3 text-sm text-red-200"
+          className="flex flex-col gap-3 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3"
         >
-          {judge.state.message}
-        </p>
+          <p className="text-sm text-amber-100">
+            Gemini is temporarily busy. Showing deterministic replay verdict.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void judge.runJudge()}
+              className="inline-flex items-center gap-1.5 rounded-md border border-amber-300/50 bg-amber-400/15 px-3 py-1.5 text-xs font-semibold text-amber-50 transition-colors hover:bg-amber-400/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
+            >
+              Retry live audit
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const fallback = buildFallbackVerdict({
+                  scenario: activeScenario,
+                  mode: selection.mode,
+                  upstreamMessage:
+                    judge.state.status === "error"
+                      ? judge.state.message
+                      : undefined,
+                });
+                handleJudgeResult(fallback);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-zinc-100 transition-colors hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            >
+              Use replay proof
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {/* V2.2 §13 — cinematic verdict reveal, integrated into Summary so
