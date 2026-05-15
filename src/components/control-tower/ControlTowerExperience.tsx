@@ -90,6 +90,16 @@ export function ControlTowerExperience({
   const [activeTab, setActiveTab] = useState<CockpitTabId>("summary");
   const [hasUserSelectedRun, setHasUserSelectedRun] = useState<boolean>(false);
   const [helperVisible, setHelperVisible] = useState<boolean>(false);
+  // P0-MF-1 — when the live Gemini call fails (429 / 503 / timeout /
+  // network), we automatically pose a deterministic fallback verdict
+  // instead of leaving the user staring at an empty error banner.
+  // `fallbackInfo` is what the UI reads (banner + technical detail);
+  // `fallbackTriggeredSignatureRef` makes sure the auto-trigger only
+  // fires once per unique error cycle (anti-loop safety).
+  const [fallbackInfo, setFallbackInfo] = useState<{
+    upstreamMessage: string;
+  } | null>(null);
+  const fallbackTriggeredSignatureRef = useRef<string | null>(null);
 
   // V2.2 §6 — Selected Run Summary anchor used to scroll into view on
   // every Select run click. The summary card is the only landing
@@ -164,6 +174,10 @@ export function ControlTowerExperience({
     (result: GeminiJudgeResult) => {
       setJudgeBefore(result);
       setJudgeAfter(null);
+      // A live Gemini result invalidates any previous fallback banner —
+      // the auto-fallback path passes its own `fallbackInfo` _after_
+      // calling `handleJudgeResult`, so we can safely clear here.
+      setFallbackInfo(null);
 
       // V2.2 §3 — feed the cockpit scoreboard. Cost is sourced
       // from the audited snapshot when available (scenario / replay) and
@@ -206,6 +220,8 @@ export function ControlTowerExperience({
     setSelection(next);
     setJudgeBefore(null);
     setJudgeAfter(null);
+    setFallbackInfo(null);
+    fallbackTriggeredSignatureRef.current = null;
     setHasUserSelectedRun(true);
     setActiveTab("summary");
     setHelperVisible(true);
@@ -235,10 +251,45 @@ export function ControlTowerExperience({
       if (selection.mode === "replay") {
         setJudgeBefore(null);
         setJudgeAfter(null);
+        setFallbackInfo(null);
+        fallbackTriggeredSignatureRef.current = null;
       }
     },
     [selection.mode],
   );
+
+  // P0-MF-1 — auto-fallback effect. Watches the Gemini judge state
+  // and, on a true error (not a transient loading→error→loading flip),
+  // synthesises a deterministic verdict via `buildFallbackVerdict` and
+  // pushes it through the same `handleJudgeResult` path so the rest
+  // of the cockpit (scoreboard, sticky bar, verdict card, before/after)
+  // lights up exactly like a successful audit.
+  //
+  // Anti-loop guard: we tag each error cycle with a stable signature
+  // (judgeKey + error message) and refuse to fire again until either
+  // the signature changes (new run picked, new error message) or the
+  // user explicitly retries (which clears the ref via the Retry CTA).
+  useEffect(() => {
+    if (judge.state.status !== "error") return;
+    if (judgeBefore) return; // a verdict is already on screen — keep it.
+    const signature = `${judgeKey}::${judge.state.message}`;
+    if (fallbackTriggeredSignatureRef.current === signature) return;
+    fallbackTriggeredSignatureRef.current = signature;
+    const fallback = buildFallbackVerdict({
+      scenario: activeScenario,
+      mode: selection.mode,
+      upstreamMessage: judge.state.message,
+    });
+    handleJudgeResult(fallback);
+    setFallbackInfo({ upstreamMessage: judge.state.message });
+  }, [
+    judge.state,
+    judgeKey,
+    judgeBefore,
+    activeScenario,
+    selection.mode,
+    handleJudgeResult,
+  ]);
 
   const summaryMode = selection.mode;
   const summaryHint = ctaEmptyHintFor(selection.mode, judgeRequestBody);
@@ -348,47 +399,45 @@ export function ControlTowerExperience({
           is in flight. Replaces the previous panel-internal ticker. */}
       {judge.busy ? <GeminiScanTicker /> : null}
 
-      {judge.state.status === "error" ? (
-        // P0-8 — never surface a raw API error in the main flow. We
-        // tell the user Gemini is busy in plain English, offer a
-        // one-click retry, and let them switch to the bundled replay
-        // proof so the demo never dead-ends. The technical message is
-        // tucked into the Technical proof disclosure further down the
-        // page (and inside the verdict summary copy if they hit "Use
-        // replay proof").
+      {fallbackInfo ? (
+        // P0-MF-1 — never surface a raw API error in the main flow.
+        // The fallback verdict has already been auto-posed via the
+        // effect above, so this banner is purely informational. The
+        // raw upstream message stays inside the <details> below for
+        // debug-minded reviewers; the main copy is honest, short, and
+        // keeps the demo moving.
         <div
           role="status"
-          className="flex flex-col gap-3 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3"
+          className="flex flex-col gap-2 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3"
         >
           <p className="text-sm text-amber-100">
-            Gemini is temporarily busy. Showing deterministic replay verdict.
+            Gemini is temporarily busy. Deterministic replay verdict is
+            shown so the demo keeps moving.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => void judge.runJudge()}
+              onClick={() => {
+                // Allow the auto-fallback to fire again on the next
+                // error cycle if the retry also fails.
+                fallbackTriggeredSignatureRef.current = null;
+                setFallbackInfo(null);
+                void judge.runJudge();
+              }}
               className="inline-flex items-center gap-1.5 rounded-md border border-amber-300/50 bg-amber-400/15 px-3 py-1.5 text-xs font-semibold text-amber-50 transition-colors hover:bg-amber-400/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
             >
               Retry live audit
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                const fallback = buildFallbackVerdict({
-                  scenario: activeScenario,
-                  mode: selection.mode,
-                  upstreamMessage:
-                    judge.state.status === "error"
-                      ? judge.state.message
-                      : undefined,
-                });
-                handleJudgeResult(fallback);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-zinc-100 transition-colors hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-            >
-              Use replay proof
-            </button>
           </div>
+          <details className="text-[11px] text-amber-100/80">
+            <summary className="cursor-pointer select-none text-amber-200/90 hover:text-amber-100">
+              View replay details
+            </summary>
+            <p className="mt-1 font-mono text-amber-50/80">
+              Live Gemini call failed: {fallbackInfo.upstreamMessage}.
+              Replay fallback used.
+            </p>
+          </details>
         </div>
       ) : null}
 
