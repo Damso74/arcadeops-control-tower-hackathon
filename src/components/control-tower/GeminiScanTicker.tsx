@@ -22,12 +22,13 @@
 import { Check, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
+// P1 — copy aligned with the product brief.
 const SCAN_STEPS: readonly string[] = [
-  "Reading agent trace…",
+  "Gemini is reading the run log…",
   "Checking tool calls…",
   "Detecting external side effects…",
-  "Applying production policies…",
-  "Generating Gemini verdict…",
+  "Applying safety rules…",
+  "Generating production decision…",
 ];
 
 const STEP_DURATION_MS = 600;
@@ -54,7 +55,7 @@ export function GeminiScanTicker({
     <div
       role="status"
       aria-live="polite"
-      aria-label="Gemini production gate audit in progress"
+      aria-label="Gemini is auditing this run"
       data-testid="gemini-scan-ticker"
       className={[
         "relative flex flex-col gap-1.5 overflow-hidden rounded-lg border border-violet-400/20 bg-violet-500/[0.06]",
@@ -75,7 +76,7 @@ export function GeminiScanTicker({
           <Sparkles className="h-3 w-3" aria-hidden />
         </span>
         <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-200">
-          Gemini production gate · scan in progress
+          Gemini is auditing this run
         </span>
       </div>
 

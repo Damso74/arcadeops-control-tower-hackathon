@@ -84,12 +84,12 @@ type ArchTone = "neutral" | "violet" | "emerald" | "amber";
 export function ArcadeOpsRuntimeSection() {
   return (
     <section
-      aria-label="Under the hood: powered by ArcadeOps Runtime"
+      aria-label="Architecture: powered by ArcadeOps Runtime"
       className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/[0.04] via-white/[0.02] to-violet-500/[0.04] p-6 sm:p-8"
     >
       <header className="flex flex-col gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-300">
-          Under the hood
+          Architecture
         </p>
         <h2 className="text-balance text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
           Powered by ArcadeOps Runtime

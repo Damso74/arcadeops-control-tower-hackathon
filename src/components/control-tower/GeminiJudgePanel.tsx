@@ -271,9 +271,9 @@ export function GeminiJudgePanel({
               <Spinner /> Auditing run…
             </>
           ) : state.status === "ready" ? (
-            "Re-run production gate"
+            "Audit again"
           ) : (
-            actionLabel ?? "Run production gate"
+            actionLabel ?? "Audit this run"
           )}
         </button>
       </header>
@@ -391,7 +391,7 @@ export function JudgeResultView({
       {/* Production policy gate details — only when triggered. */}
       {result.policyGate?.triggered && result.policyGate.rules.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <SectionTitle>ArcadeOps production gates</SectionTitle>
+          <SectionTitle>ArcadeOps safety rules</SectionTitle>
           <Disclosure
             label={`${result.policyGate.rules.length} non-negotiable rule${
               result.policyGate.rules.length === 1 ? "" : "s"
@@ -675,7 +675,7 @@ function DecisionCard({
           {policyGate?.triggered && policyGate.rules.length > 0 ? (
             <p className="text-[11px] leading-relaxed text-zinc-500">
               Gemini provided the audit. ArcadeOps applied non-negotiable
-              production gates.
+              safety rules.
             </p>
           ) : null}
         </div>
