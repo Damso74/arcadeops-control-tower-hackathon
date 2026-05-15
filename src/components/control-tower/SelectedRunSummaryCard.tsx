@@ -9,8 +9,8 @@
  *   - 3 key findings (top risks for unsafe, top assurances for safe)
  *   - Compact metrics ribbon (cost, tokens, tools, flags)
  *   - <GateStatus /> reflecting the current verdict (or awaiting)
- *   - Primary CTA "Run Gemini Production Gate" (or "Re-run gate" once
- *     a verdict has landed)
+ *   - Primary CTA "Audit this run" (or "Audit again" once a verdict
+ *     has landed)
  *   - Optional <AgentPipelineDiagram /> below the metrics
  *
  * Pure presentational layer — the parent owns the request body, the

@@ -1,10 +1,10 @@
 /**
- * "Under the hood: powered by ArcadeOps Runtime"
+ * "Architecture: powered by ArcadeOps Runtime"
  *
  * Hackathon storytelling block. The Control Tower demo only shows the
  * production gate; this section reminds the judge that the gate is the
  * tip of an actual autonomous-agent platform — agents, tools, sub-agent
- * delegation, trace persistence, cost / risk audit, policy gates.
+ * delegation, trace persistence, cost / risk audit, safety rules.
  *
  * Pure, server-friendly (no client hooks, no fetches). Static content
  * deliberately — there is no value in making this interactive for a
@@ -76,7 +76,7 @@ const ARCH_NODES: readonly { label: string; tone: ArchTone }[] = [
   { label: "Trace", tone: "neutral" },
   { label: "Gemini Reliability Agent", tone: "emerald" },
   { label: "Production decision", tone: "amber" },
-  { label: "Guardrails", tone: "emerald" },
+  { label: "Safety rules", tone: "emerald" },
 ];
 
 type ArchTone = "neutral" | "violet" | "emerald" | "amber";

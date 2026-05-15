@@ -404,8 +404,8 @@ function riskPalette(level: ScenarioRiskLevel): {
   }
 }
 
-// V2.2 §5 — uniform CTA across the 4 cards. "Select run" replaces
-// "Audit this run" because the actual audit only happens later, when
-// the user clicks "Run Gemini Production Gate" inside the Selected
-// Run Summary card.
+// V2.2 §5 — uniform CTA across the 4 cards. "Select run" intentionally
+// differs from the primary "Audit this run" CTA because the actual
+// audit only happens later, when the user clicks "Audit this run"
+// inside the Selected Run Summary card.
 const SECONDARY_CTA_LABEL = "Select run";

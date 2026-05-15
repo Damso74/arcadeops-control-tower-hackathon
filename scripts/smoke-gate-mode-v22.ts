@@ -133,10 +133,12 @@ async function main(): Promise<number> {
     'aria-label="Selected run summary"',
   ]);
 
-  // 9 — Gemini CTA visible above the fold (test id).
+  // 9 — Gemini CTA visible above the fold (test id). Label was
+  // renamed to "Audit this run" in the UX V2.2 wording sweep, the
+  // data-testid is kept stable for tooling.
   assertContains(9, "Gemini CTA is rendered (above-the-fold testid)", html, [
     'data-testid="run-gemini-production-gate"',
-    "Run Gemini Production Gate",
+    "Audit this run",
   ]);
 
   // 10 — scan animation: dynamic (only renders during audit).
