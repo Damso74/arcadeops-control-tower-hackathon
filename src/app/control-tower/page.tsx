@@ -48,7 +48,34 @@ export default function ControlTowerPage() {
 
         <ControlTowerExperience liveAvailable={availability.live} />
 
-        <ArcadeOpsRuntimeSection />
+        {/* V2.2.1 — clarity patch: hide the runtime architecture section
+            behind a native disclosure so it never competes with the main
+            demo flow (Summary tab + Gate Closed/Open). Judges can still
+            reach it in one click, but the cockpit lands clean on first
+            paint. */}
+        <details className="group rounded-2xl border border-white/10 bg-white/[0.02] open:bg-white/[0.03]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-5 py-4 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 sm:px-6">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                Under the hood
+              </span>
+              <span className="text-zinc-100">Show technical architecture</span>
+            </span>
+            <svg
+              aria-hidden
+              viewBox="0 0 20 20"
+              className="h-4 w-4 flex-none text-zinc-400 transition-transform group-open:rotate-180"
+            >
+              <path
+                fill="currentColor"
+                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.24 4.38a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06z"
+              />
+            </svg>
+          </summary>
+          <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+            <ArcadeOpsRuntimeSection />
+          </div>
+        </details>
 
         <footer className="border-t border-white/10 pt-6 text-xs text-zinc-500">
           <p>

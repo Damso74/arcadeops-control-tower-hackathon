@@ -102,10 +102,15 @@ async function main(): Promise<number> {
     'aria-label="Cockpit scoreboard"',
   ]);
 
-  // 5 — Agent Test Gallery section visible
-  assertContains(5, "Agent Test Gallery is visible", html, [
+  // 5 — Scenario gallery section visible. The aria-label + heading were
+  // renamed in the V2.2.1 clarity patch ("Agent Test Gallery" →
+  // "Start here: choose an agent run") so the first-time judge knows
+  // exactly what to do. We keep the `data-section` anchor stable for
+  // the recommended demo path scroll targets.
+  assertContains(5, "Scenario gallery section is visible", html, [
     'data-section="agent-test-gallery"',
-    "Agent Test Gallery",
+    "Start here: choose an agent run",
+    "Pick a risky or safe agent run",
   ]);
 
   // 6 — scenario CTAs are "Select run"

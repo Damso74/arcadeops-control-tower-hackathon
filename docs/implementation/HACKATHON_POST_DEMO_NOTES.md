@@ -171,6 +171,11 @@ Refonte cockpit guided pour le hackathon AI Agent Olympics — un seul commit
 - Pas de nouveau scénario, pas de nouvelle route, pas de refonte
   `ControlTowerExperience.tsx` au-delà du strict nécessaire.
 
+**Patch de clarté V2.2.1 (2026-05-15 PM) :**
+
+- 2026-05-15 (PM) — Clarity patch: heading "Start here", support label
+  aligné verdict réel, "Under the hood" derrière disclosure.
+
 ---
 
 ## Format pour la prochaine entrée

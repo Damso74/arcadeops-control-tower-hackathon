@@ -60,16 +60,17 @@ export function TraceScenarioPicker({
 
   return (
     <section
-      aria-label="Agent Test Gallery"
+      aria-label="Start here: choose an agent run"
       data-section="agent-test-gallery"
       className="flex flex-col gap-4"
     >
       <header className="flex flex-col gap-1">
-        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          1 · Agent Test Gallery
+        <h2 className="text-lg font-semibold tracking-tight text-zinc-100 sm:text-xl">
+          Start here: choose an agent run
         </h2>
         <p className="text-sm text-zinc-300">
-          Choose a pre-recorded agent run or paste your own trace.
+          Pick a risky or safe agent run, then launch the Gemini production
+          gate.
         </p>
       </header>
 
@@ -349,7 +350,7 @@ function renderSecondaryIcon(level: ScenarioRiskLevel) {
 function secondaryDescription(scenario: TraceScenario): string {
   switch (scenario.expectedVerdict) {
     case "needs_review":
-      return "Drafts customer replies without a confidence floor — ship or escalate?";
+      return "Drafts a customer reply without confidence and approval controls.";
     case "ready":
       return "Reads sources only, every step audited — green-light candidate.";
     case "blocked":

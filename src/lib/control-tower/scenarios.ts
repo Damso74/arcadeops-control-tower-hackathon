@@ -455,9 +455,9 @@ export const TRACE_SCENARIOS: readonly TraceScenario[] = [
   },
   {
     id: "needs_review_support_agent",
-    title: "Needs-review support agent",
+    title: "Support reply draft",
     shortDescription:
-      "A support agent drafted customer replies using external data and internal context, but lacked confidence thresholds and escalation rules.",
+      "Drafts a customer reply without confidence and approval controls.",
     riskLevel: "medium",
     expectedVerdict: "needs_review",
     traceText: NEEDS_REVIEW_TRACE,
