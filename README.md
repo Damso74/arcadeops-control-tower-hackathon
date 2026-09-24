@@ -414,3 +414,9 @@ arcadeops-control-tower-hackathon/
 Released under the MIT License — see [`LICENSE`](LICENSE). The repo is
 private until the jury review window, then it goes public for the
 Lablab.ai submission.
+
+---
+
+## Repère de portefeuille
+
+Ce dépôt conserve le démonstrateur du hackathon Control Tower. Le projet principal ArcadeOps est dans [Damso74/ArcadeOps](https://github.com/Damso74/ArcadeOps) (dépôt privé).
